@@ -1,10 +1,12 @@
+import React from 'react';
+import { LightbulbOn } from '@keyline-icons/react';
 import type { AppType } from '../store/useOSStore';
 
 export interface AppDefinition {
   id: AppType;
   name: string;
   category: 'teacher' | 'student' | 'shared';
-  icon: string;
+  icon: React.ReactNode;
   description: string;
   allowedRoles: Array<'teacher' | 'student'>;
 }
@@ -49,9 +51,9 @@ export const APP_REGISTRY: AppDefinition[] = [
     id: 'my-learning',
     name: 'My Learning',
     category: 'student',
-    icon: '🚀',
+    icon: <LightbulbOn width={26} height={26} strokeWidth={2} className="keyline-theme-icon" />,
     description: 'Unified learning cockpit with active interventions & progress',
-    allowedRoles: ['student'],
+    allowedRoles: ['student', 'teacher'],
   },
   {
     id: 'practice-lab',
@@ -59,7 +61,7 @@ export const APP_REGISTRY: AppDefinition[] = [
     category: 'student',
     icon: '📝',
     description: 'Interactive MCQ & multi-choice conceptual practice',
-    allowedRoles: ['student'],
+    allowedRoles: ['student', 'teacher'],
   },
   {
     id: 'code-lab',
@@ -67,8 +69,9 @@ export const APP_REGISTRY: AppDefinition[] = [
     category: 'student',
     icon: '💻',
     description: 'Live coding environment with local test verification & AI hints',
-    allowedRoles: ['student'],
+    allowedRoles: ['student', 'teacher'],
   },
+
   {
     id: 'progress-lab',
     name: 'Progress Lab',

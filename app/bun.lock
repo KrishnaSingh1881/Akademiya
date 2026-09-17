@@ -5,6 +5,7 @@
     "": {
       "name": "akademiya-app",
       "dependencies": {
+        "@keyline-icons/react": "^0.9.0",
         "@monaco-editor/react": "^4.7.0",
         "axios": "^1.7.9",
         "lucide-react": "^1.16.0",
@@ -116,6 +117,8 @@
     "@jridgewell/sourcemap-codec": ["@jridgewell/sourcemap-codec@1.6.0", "", {}, "sha512-T7jf+5zgsZHwNJ4lvQ7/aezbyk0nNX+zJVWpmHA7VYsEx7a7qr5Rg5IbtJFqkgze5Y2sruq1RUY8Q837Od7iFw=="],
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
+
+    "@keyline-icons/react": ["@keyline-icons/react@0.9.0", "", { "peerDependencies": { "react": ">=18" } }, "sha512-DmapgTyT0jP9E9SZw/G6DXYzgpF0XedKqaR0yPen3DVP2yAQ2ge2BcDSi6ehU1cn6yG4vtSYin6s7oitHaSvTg=="],
 
     "@monaco-editor/loader": ["@monaco-editor/loader@1.7.0", "", { "dependencies": { "state-local": "^1.0.6" } }, "sha512-gIwR1HrJrrx+vfyOhYmCZ0/JcWqG5kbfG7+d3f/C1LXk2EvzAbHSg3MQ5lO2sMlo9izoAZ04shohfKLVT6crVA=="],
 

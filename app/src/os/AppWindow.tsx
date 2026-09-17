@@ -51,10 +51,9 @@ export default function AppWindow({ window: win, children }: AppWindowProps) {
         }}
       />
       <div
-        className="flex-1 overflow-auto p-4"
+        className="window-content custom-scrollbar"
         style={{
-          background: 'var(--window-bg)',
-          color: 'var(--text-primary)'
+          color: 'var(--text-primary)',
         }}
       >
         {children}

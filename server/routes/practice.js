@@ -4,15 +4,34 @@ import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// GET /api/practice/assessments/available - returns published assessments for students
+router.get('/assessments/available', requireAuth, async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT a.id, a.title, a.status, a.proctoring_enabled, a.integrity_rules, a.created_at,
+              COUNT(q.id) as question_count
+       FROM assessments a
+       JOIN questions q ON q.assessment_id = a.id
+       WHERE a.status = 'published'
+       GROUP BY a.id
+       ORDER BY a.created_at DESC`
+    );
+    return res.json({ assessments: result.rows });
+  } catch (err) {
+    console.error('Available assessments error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // GET /api/practice/:student_id - returns teacher and AI generated questions available to student
 router.get('/:student_id', requireAuth, async (req, res) => {
   try {
     const studentId = req.params.student_id;
-    const { concept } = req.query;
+    const { concept, assessment_id } = req.query;
 
     let sql = `
       SELECT q.id, q.concept, q.subconcept, q.type, q.statement, q.options, 
-             q.bloom_level, q.difficulty, q.source, q.created_at,
+             q.bloom_level, q.difficulty, q.source, q.assessment_id, q.created_at,
              (
                SELECT json_agg(json_build_object(
                  'id', a.id,
@@ -28,7 +47,10 @@ router.get('/:student_id', requireAuth, async (req, res) => {
     `;
     const params = [studentId];
 
-    if (concept) {
+    if (assessment_id) {
+      params.push(assessment_id);
+      sql += ` AND q.assessment_id = $${params.length}`;
+    } else if (concept) {
       params.push(concept);
       sql += ` AND q.concept = $${params.length}`;
     }
@@ -44,3 +66,4 @@ router.get('/:student_id', requireAuth, async (req, res) => {
 });
 
 export default router;
+

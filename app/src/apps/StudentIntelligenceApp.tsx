@@ -43,9 +43,29 @@ export default function StudentIntelligenceApp() {
           </p>
         </div>
 
-        {/* Student Selector */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <label style={{ fontSize: 12, fontWeight: 600 }}>Select Student:</label>
+        {/* Controls: Create Test & Student Selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('akademiya-open-test-studio'))}
+            className="btn-primary"
+            style={{
+              fontSize: 12,
+              padding: '6px 12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+              border: 'none',
+              borderRadius: 8,
+              boxShadow: '0 2px 8px rgba(168, 85, 247, 0.3)',
+            }}
+          >
+            <span>➕</span>
+            <span>Create / Generate Test</span>
+          </button>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <label style={{ fontSize: 12, fontWeight: 600 }}>Select Student:</label>
           <select
             value={selectedStudentId}
             onChange={(e) => setSelectedStudentId(e.target.value)}
@@ -68,6 +88,7 @@ export default function StudentIntelligenceApp() {
           </select>
         </div>
       </div>
+    </div>
 
       {/* Main Content */}
       {loading ? (

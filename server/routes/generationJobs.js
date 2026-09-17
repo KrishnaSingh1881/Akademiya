@@ -9,7 +9,7 @@ const router = express.Router();
 router.post('/', requireAuth, requireTeacher, async (req, res) => {
   try {
     const teacherId = req.user.id;
-    const { concept, subconcept, requested_count = 5, bloom_level = 'apply', difficulty = 'medium', type = 'mcq_single' } = req.body;
+    const { concept, subconcept, requested_count = 5, bloom_level = 'apply', difficulty = 'medium', type = 'mcq_single', assessment_id = null } = req.body;
 
     if (!concept || !subconcept) {
       return res.status(400).json({ error: 'concept and subconcept are required' });
@@ -41,9 +41,11 @@ router.post('/', requireAuth, requireTeacher, async (req, res) => {
     queue.enqueue({
       id: job.id,
       teacher_id: teacherId,
+      assessment_id,
       requested_count: count,
       blueprint
     });
+
 
     return res.status(202).json({
       job_id: job.id,

@@ -1,4 +1,5 @@
 import React from 'react';
+import { AppX, AppMinus, AppPlus } from '@keyline-icons/react';
 import { useOSStore } from '../store/useOSStore';
 
 interface TrafficLightsProps {
@@ -10,42 +11,38 @@ export default function TrafficLights({ windowId, isMaximized }: TrafficLightsPr
   const { closeWindow, minimizeWindow, maximizeWindow, unmaximizeWindow } = useOSStore();
 
   return (
-    <div className="flex items-center gap-2 px-1">
-      {/* Close (Red) */}
+    <div className="traffic-lights-container">
+      {/* Close (Red) -> AppX */}
       <button
         onClick={(e) => {
           e.stopPropagation();
           closeWindow(windowId);
         }}
         title="Close"
-        style={{
-          width: 12,
-          height: 12,
-          borderRadius: '50%',
-          backgroundColor: '#ff5f56',
-          border: '1px solid rgba(0,0,0,0.15)',
-          cursor: 'pointer',
-          outline: 'none'
-        }}
-      />
-      {/* Minimize (Yellow) */}
+        className="traffic-light traffic-light-red"
+        aria-label="Close Window"
+      >
+        <span className="traffic-light-icon">
+          <AppX width={13} height={13} strokeWidth={2.2} className="keyline-theme-icon" />
+        </span>
+      </button>
+
+      {/* Minimize (Yellow) -> AppMinus */}
       <button
         onClick={(e) => {
           e.stopPropagation();
           minimizeWindow(windowId);
         }}
         title="Minimize"
-        style={{
-          width: 12,
-          height: 12,
-          borderRadius: '50%',
-          backgroundColor: '#ffbd2e',
-          border: '1px solid rgba(0,0,0,0.15)',
-          cursor: 'pointer',
-          outline: 'none'
-        }}
-      />
-      {/* Maximize (Green) */}
+        className="traffic-light traffic-light-yellow"
+        aria-label="Minimize Window"
+      >
+        <span className="traffic-light-icon">
+          <AppMinus width={13} height={13} strokeWidth={2.2} className="keyline-theme-icon" />
+        </span>
+      </button>
+
+      {/* Maximize/Restore (Green) -> AppPlus */}
       <button
         onClick={(e) => {
           e.stopPropagation();
@@ -53,16 +50,15 @@ export default function TrafficLights({ windowId, isMaximized }: TrafficLightsPr
           else maximizeWindow(windowId);
         }}
         title={isMaximized ? 'Restore' : 'Maximize'}
-        style={{
-          width: 12,
-          height: 12,
-          borderRadius: '50%',
-          backgroundColor: '#27c93f',
-          border: '1px solid rgba(0,0,0,0.15)',
-          cursor: 'pointer',
-          outline: 'none'
-        }}
-      />
+        className="traffic-light traffic-light-green"
+        aria-label={isMaximized ? 'Restore Window' : 'Maximize Window'}
+      >
+        <span className="traffic-light-icon">
+          <AppPlus width={13} height={13} strokeWidth={2.2} className="keyline-theme-icon" />
+        </span>
+      </button>
     </div>
   );
 }
+
+

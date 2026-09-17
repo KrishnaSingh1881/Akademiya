@@ -25,6 +25,29 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+// ── Terminal Debugging: Colorized Request & Performance Logger ──
+app.use((req, res, next) => {
+  const start = Date.now();
+  const method = req.method;
+  const url = req.originalUrl || req.url;
+
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    const status = res.statusCode;
+    const statusColor = status >= 500 ? '\x1b[31m' : status >= 400 ? '\x1b[33m' : status >= 300 ? '\x1b[36m' : '\x1b[32m';
+    const methodColor = '\x1b[35m';
+    const reset = '\x1b[0m';
+    const timeStr = new Date().toLocaleTimeString();
+    const bodyInfo = ['POST', 'PUT', 'PATCH'].includes(method) && req.body && Object.keys(req.body).length > 0
+      ? ` | payload=${JSON.stringify(req.body, (k, v) => (k.toLowerCase().includes('password') ? '***' : v)).slice(0, 100)}`
+      : '';
+
+    console.log(`${timeStr} \x1b[90m[HTTP]\x1b[0m ${methodColor}${method.padEnd(6)}${reset} ${url.padEnd(32)} ${statusColor}${status}${reset} (${duration}ms)${bodyInfo}`);
+  });
+
+  next();
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/questions', questionRoutes);
@@ -43,6 +66,13 @@ app.use('/api/settings', settingsRoutes);
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'Akademiya Learning Intelligence Platform' });
+});
+
+// Global Error Debugging Handler
+app.use((err, req, res, next) => {
+  const timeStr = new Date().toLocaleTimeString();
+  console.error(`${timeStr} \x1b[31m[SERVER ERROR]\x1b[0m ${req.method} ${req.url}:`, err);
+  res.status(err.status || 500).json({ error: err.message || 'Internal Server Error' });
 });
 
 export const server = http.createServer(app);

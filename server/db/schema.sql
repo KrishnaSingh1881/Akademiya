@@ -18,8 +18,11 @@ CREATE TABLE IF NOT EXISTS assessments (
   teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   title VARCHAR(255) NOT NULL,
   status VARCHAR(50) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
+  proctoring_enabled BOOLEAN NOT NULL DEFAULT false,
+  integrity_rules JSONB NOT NULL DEFAULT '{"fullscreen": true, "block_tab_switch": true, "block_clipboard": true, "max_violations": 3}'::jsonb,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+
 
 -- 3. questions
 CREATE TABLE IF NOT EXISTS questions (
@@ -159,6 +162,16 @@ CREATE TABLE IF NOT EXISTS coding_challenges (
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 15. integrity_events (Deterministic forensic anticheat tracking)
+CREATE TABLE IF NOT EXISTS integrity_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  assessment_id UUID REFERENCES assessments(id) ON DELETE CASCADE,
+  student_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  event_type VARCHAR(50) NOT NULL CHECK (event_type IN ('tab_switch', 'window_blur', 'fullscreen_exit', 'paste_attempt', 'copy_attempt', 'context_menu')),
+  metadata JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Helpful indexes for rapid deterministic querying
 CREATE INDEX IF NOT EXISTS idx_questions_concept ON questions(concept, subconcept);
 CREATE INDEX IF NOT EXISTS idx_attempts_student ON attempts(student_id, question_id);
@@ -166,3 +179,5 @@ CREATE INDEX IF NOT EXISTS idx_evidence_student_concept ON learning_evidence(stu
 CREATE INDEX IF NOT EXISTS idx_gaps_student_status ON learning_gaps(student_id, status);
 CREATE INDEX IF NOT EXISTS idx_interventions_gap ON interventions(gap_id);
 CREATE INDEX IF NOT EXISTS idx_gen_jobs_teacher ON generation_jobs(teacher_id);
+CREATE INDEX IF NOT EXISTS idx_integrity_events_assess_student ON integrity_events(assessment_id, student_id);
+

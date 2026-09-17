@@ -24,14 +24,68 @@ export default function ClassInsightsApp() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
       {/* Header */}
-      <div style={{ borderBottom: '1px solid var(--panel-border)', paddingBottom: 12 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 800 }}>Class Intelligence & Concept Health</h2>
-        <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-          Real-time class-wide aggregation of emerging and confirmed conceptual gaps.
-        </p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--panel-border)', paddingBottom: 12 }}>
+        <div>
+          <h2 style={{ fontSize: 18, fontWeight: 800 }}>Class Intelligence & Concept Health</h2>
+          <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+            Real-time class-wide aggregation of emerging and confirmed conceptual gaps.
+          </p>
+        </div>
+
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('akademiya-open-test-studio'))}
+          className="btn-primary"
+          style={{
+            fontSize: 12,
+            padding: '6px 14px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+            border: 'none',
+            borderRadius: 8,
+            boxShadow: '0 2px 8px rgba(168, 85, 247, 0.3)',
+          }}
+        >
+          <span>➕</span>
+          <span>Create / Generate Test</span>
+        </button>
+      </div>
+
+      {/* Assessment Integrity Quick-Audit Banner */}
+      <div
+        className="glass-panel"
+        style={{
+          borderRadius: 12,
+          padding: '12px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: 'rgba(99, 102, 241, 0.08)',
+          border: '1px solid rgba(99, 102, 241, 0.3)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 20 }}>🛡️</span>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700 }}>Assessment Focus & Integrity Engine</div>
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+              Configure Anticheat on tests and inspect deterministic forensic audit trails.
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('akademiya-open-test-studio'))}
+          className="btn-secondary"
+          style={{ fontSize: 11, padding: '5px 12px', display: 'flex', alignItems: 'center', gap: 6 }}
+        >
+          <span>🔍</span>
+          <span>View Integrity & Assessments</span>
+        </button>
       </div>
 
       {/* Summary KPI Cards */}
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
         <div className="glass-panel" style={{ borderRadius: 12, padding: 14 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>

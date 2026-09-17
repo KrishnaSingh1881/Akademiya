@@ -18,6 +18,7 @@ export function setupWebSocket(server) {
             jobSubscribers.set(currentJobId, new Set());
           }
           jobSubscribers.get(currentJobId).add(ws);
+          console.log(`${new Date().toLocaleTimeString()} \x1b[90m[WS]\x1b[0m Client subscribed to job \x1b[36m${currentJobId}\x1b[0m`);
           ws.send(JSON.stringify({ type: 'subscribed', jobId: currentJobId }));
         }
       } catch (err) {
@@ -41,6 +42,8 @@ export function setupWebSocket(server) {
 export function broadcastJobEvent(jobId, eventType, payload) {
   const subscribers = jobSubscribers.get(jobId);
   if (!subscribers || subscribers.size === 0) return;
+
+  console.log(`${new Date().toLocaleTimeString()} \x1b[90m[WS BROADCAST]\x1b[0m Event: \x1b[32m${eventType}\x1b[0m (Job: ${jobId}) -> ${subscribers.size} subscriber(s)`);
 
   const message = JSON.stringify({
     type: eventType,

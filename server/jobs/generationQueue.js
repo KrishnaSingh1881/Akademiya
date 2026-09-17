@@ -30,7 +30,7 @@ class GenerationQueue {
   }
 
   async runJob(job) {
-    const { id: jobId, teacher_id, requested_count, blueprint } = job;
+    const { id: jobId, teacher_id, requested_count, blueprint, assessment_id = null } = job;
     broadcastJobEvent(jobId, 'generation.started', { requested_count });
 
     let generatedCount = 0;
@@ -94,10 +94,11 @@ class GenerationQueue {
       // 4. Insert into questions table (source = 'ai')
       const qRes = await query(
         `INSERT INTO questions 
-         (concept, subconcept, type, statement, options, correct_option_ids, bloom_level, difficulty, source, embedding)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'ai', $9)
+         (assessment_id, concept, subconcept, type, statement, options, correct_option_ids, bloom_level, difficulty, source, embedding)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'ai', $10)
          RETURNING *`,
         [
+          assessment_id,
           questionObj.concept,
           questionObj.subconcept,
           questionObj.type,
@@ -110,6 +111,7 @@ class GenerationQueue {
         ]
       );
       const insertedQuestion = qRes.rows[0];
+
 
       // 5. Link in generated_questions
       await query(

@@ -1,13 +1,17 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useOSStore } from './store/useOSStore';
 import MenuBar from './MenuBar';
 import Dock from './Dock';
 import WindowManager from './WindowManager';
+import ConsoleDebugger from './components/ConsoleDebugger';
+import AssessmentStudioModal from './components/AssessmentStudioModal';
 
 export default function Desktop() {
   const { user } = useAuth();
   const { openWindow, windows } = useOSStore();
+  const [showDebugger, setShowDebugger] = useState(false);
+  const [showTestModal, setShowTestModal] = useState(false);
   const initialized = useRef(false);
 
   useEffect(() => {
@@ -19,6 +23,10 @@ export default function Desktop() {
         openWindow('my-learning');
       }
     }
+
+    const handleOpenStudio = () => setShowTestModal(true);
+    window.addEventListener('akademiya-open-test-studio', handleOpenStudio);
+    return () => window.removeEventListener('akademiya-open-test-studio', handleOpenStudio);
   }, [user]);
 
   return (
@@ -32,7 +40,11 @@ export default function Desktop() {
       }}
     >
       {/* Top MenuBar */}
-      <MenuBar />
+      <MenuBar
+        isDebuggerOpen={showDebugger}
+        onToggleDebugger={() => setShowDebugger((prev) => !prev)}
+        onOpenCreateTest={() => setShowTestModal(true)}
+      />
 
       {/* Main Desktop Space */}
       <div
@@ -50,6 +62,18 @@ export default function Desktop() {
 
       {/* Floating Bottom Dock */}
       <Dock />
+
+      {/* Live Floating Terminal & Console Debugger */}
+      <ConsoleDebugger
+        isOpen={showDebugger}
+        onClose={() => setShowDebugger(false)}
+      />
+
+      {/* Assessment Studio & Test Authoring Modal */}
+      <AssessmentStudioModal
+        isOpen={showTestModal}
+        onClose={() => setShowTestModal(false)}
+      />
     </div>
   );
 }

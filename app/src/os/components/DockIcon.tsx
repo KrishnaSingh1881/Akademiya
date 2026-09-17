@@ -66,6 +66,7 @@ export default function DockIcon({ app, isOpen, isActive, onClick }: DockIconPro
           alignItems: 'center',
           justifyContent: 'center',
           fontSize: 24,
+          color: 'var(--text-primary)',
           cursor: 'pointer',
           outline: 'none',
           transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
