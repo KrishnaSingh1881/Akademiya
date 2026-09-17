@@ -1,5 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import {
+  FileText,
+  X,
+  Zap,
+  PenTool,
+  BookOpen,
+  Radio,
+  Shield,
+  CheckCircle2,
+  Save,
+  AlertTriangle,
+  Search,
+  Eye,
+  Maximize,
+  Clipboard,
+  Check,
+} from 'lucide-react';
 
 interface AssessmentStudioModalProps {
   isOpen: boolean;
@@ -184,7 +201,7 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
         difficulty: 'medium'
       });
 
-      setSeedSuccessMsg('🎉 Test & Question successfully seeded and published to student practice pool!');
+      setSeedSuccessMsg('Test & Question successfully seeded and published to student practice pool!');
       setManualStatement('');
       setOpt1('');
       setOpt2('');
@@ -264,7 +281,7 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 22 }}>📝</span>
+            <FileText size={22} color="#818cf8" />
             <div>
               <h2 style={{ fontSize: 17, fontWeight: 800 }}>Assessment Studio & Test Authoring</h2>
               <p style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
@@ -283,9 +300,12 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
               color: 'var(--text-secondary)',
               cursor: 'pointer',
               fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
-            ✕
+            <X size={16} />
           </button>
         </div>
 
@@ -302,23 +322,23 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
           <button
             onClick={() => setActiveTab('ai')}
             className={activeTab === 'ai' ? 'btn-primary' : 'btn-secondary'}
-            style={{ fontSize: 12, padding: '6px 14px' }}
+            style={{ fontSize: 12, padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
           >
-            ⚡ AI Test Generator (Streamed)
+            <Zap size={13} strokeWidth={2.2} /> AI Test Generator (Streamed)
           </button>
           <button
             onClick={() => setActiveTab('manual')}
             className={activeTab === 'manual' ? 'btn-primary' : 'btn-secondary'}
-            style={{ fontSize: 12, padding: '6px 14px' }}
+            style={{ fontSize: 12, padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
           >
-            ✍️ Manual Question Authoring
+            <PenTool size={13} strokeWidth={2.2} /> Manual Question Authoring
           </button>
           <button
             onClick={() => setActiveTab('list')}
             className={activeTab === 'list' ? 'btn-primary' : 'btn-secondary'}
-            style={{ fontSize: 12, padding: '6px 14px' }}
+            style={{ fontSize: 12, padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
           >
-            📚 Published Assessments ({assessments.length})
+            <BookOpen size={13} strokeWidth={2.2} /> Published Assessments ({assessments.length})
           </button>
         </div>
 
@@ -476,8 +496,8 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
               {generating && generationProgress && (
                 <div style={{ marginTop: 8 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
-                    <span style={{ color: '#38bdf8', fontWeight: 600 }}>
-                      ⚡ Streaming Question Generation over WebSocket...
+                    <span style={{ color: '#38bdf8', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <Radio size={13} className="animate-pulse" /> Streaming Question Generation over WebSocket...
                     </span>
                     <span>
                       {generationProgress.current} / {generationProgress.total} ({generationProgress.pct}%)
@@ -510,7 +530,7 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 20 }}>🛡️</span>
+                    <Shield size={20} color="#818cf8" />
                     <div>
                       <div style={{ fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
                         Anticheat & Exam Focus Mode
@@ -595,17 +615,17 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
                   onClick={handleStartAIGeneration}
                   disabled={generating}
                   className="btn-primary"
-                  style={{ padding: '10px 20px', fontSize: 13, opacity: generating ? 0.6 : 1 }}
+                  style={{ padding: '10px 20px', fontSize: 13, opacity: generating ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}
                 >
-                  {generating ? '⏳ Generating Test...' : '🚀 Launch AI Test Generation'}
+                  {generating ? 'Generating Test...' : <><Zap size={14} /> Launch AI Test Generation</>}
                 </button>
               </div>
 
               {/* Streamed Questions Preview */}
               {streamedQuestions.length > 0 && (
                 <div style={{ marginTop: 14 }}>
-                  <h4 style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, color: '#34d399' }}>
-                    ✅ Generated Questions ({streamedQuestions.length})
+                  <h4 style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, color: '#34d399', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <CheckCircle2 size={16} color="#34d399" /> Generated Questions ({streamedQuestions.length})
                   </h4>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 250, overflowY: 'auto' }}>
                     {streamedQuestions.map((q, idx) => (
@@ -637,7 +657,9 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
                                   fontSize: 11,
                                 }}
                               >
-                                {isCorrect ? '✓ ' : '• '}{opt.text}
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                  {isCorrect ? <Check size={11} /> : '•'} {opt.text}
+                                </span>
                               </div>
                             );
                           })}
@@ -801,7 +823,7 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 20 }}>🛡️</span>
+                    <Shield size={20} color="#818cf8" />
                     <div>
                       <div style={{ fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
                         Anticheat & Exam Focus Mode
@@ -885,9 +907,9 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
                   type="submit"
                   disabled={seeding}
                   className="btn-primary"
-                  style={{ padding: '10px 20px', fontSize: 13 }}
+                  style={{ padding: '10px 20px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}
                 >
-                  {seeding ? 'Saving...' : '💾 Seed & Publish Question'}
+                  {seeding ? 'Saving...' : <><Save size={14} /> Seed & Publish Question</>}
                 </button>
               </div>
             </form>
@@ -930,9 +952,12 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
                                 color: '#a5b4fc',
                                 border: '1px solid rgba(99, 102, 241, 0.4)',
                                 fontSize: 10,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
                               }}
                             >
-                              🛡️ Proctored Focus Mode
+                              <Shield size={11} /> Proctored Focus Mode
                             </span>
                           ) : (
                             <span
@@ -942,9 +967,12 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
                                 color: '#6ee7b7',
                                 border: '1px solid rgba(16, 185, 129, 0.3)',
                                 fontSize: 10,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
                               }}
                             >
-                              🌿 Open Formative
+                              <BookOpen size={11} /> Open Formative
                             </span>
                           )}
 
@@ -956,9 +984,12 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
                                 color: '#fca5a5',
                                 border: '1px solid rgba(239, 68, 68, 0.4)',
                                 fontSize: 10,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
                               }}
                             >
-                              ⚠️ {a.violation_count} Incident{Number(a.violation_count) > 1 ? 's' : ''}
+                              <AlertTriangle size={11} /> {a.violation_count} Incident{Number(a.violation_count) > 1 ? 's' : ''}
                             </span>
                           )}
                         </div>
@@ -978,7 +1009,7 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
                             className="btn-secondary"
                             style={{ fontSize: 11, padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 4 }}
                           >
-                            <span>🔍</span>
+                            <Search size={12} />
                             <span>Audit Trail</span>
                           </button>
                         )}
@@ -1005,7 +1036,8 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                     <div>
                       <h4 style={{ fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span>🛡️ Forensic Audit Trail:</span>
+                        <Shield size={14} color="#818cf8" />
+                        <span>Forensic Audit Trail:</span>
                         <span style={{ color: '#818cf8' }}>{selectedReportAssessment.title}</span>
                       </h4>
                       <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
@@ -1015,9 +1047,9 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
                     <button
                       onClick={() => setSelectedReportAssessment(null)}
                       className="btn-secondary"
-                      style={{ fontSize: 11, padding: '4px 8px' }}
+                      style={{ fontSize: 11, padding: '4px 8px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                     >
-                      ✕ Close Report
+                      <X size={12} /> Close Report
                     </button>
                   </div>
 
@@ -1035,9 +1067,13 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
                         background: 'rgba(16, 185, 129, 0.06)',
                         borderRadius: 8,
                         border: '1px solid rgba(16, 185, 129, 0.2)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
                       }}
                     >
-                      ✨ Immaculate Integrity: No focus violations or suspicious events recorded for this assessment.
+                      <CheckCircle2 size={16} /> Immaculate Integrity: No focus violations or suspicious events recorded for this assessment.
                     </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 240, overflowY: 'auto' }}>
@@ -1074,12 +1110,15 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
                                   : '#f87171',
                                 fontSize: 11,
                                 fontWeight: 700,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
                               }}
                             >
-                              {evt.event_type === 'tab_switch' && '⚠️ Tab Switched / Left Exam'}
-                              {evt.event_type === 'window_blur' && '👁️ Window Focus Lost'}
-                              {evt.event_type === 'fullscreen_exit' && '⛶ Fullscreen Exited'}
-                              {evt.event_type === 'paste_attempt' && '📋 Clipboard Paste Blocked'}
+                              {evt.event_type === 'tab_switch' && <><AlertTriangle size={12} /> Tab Switched / Left Exam</>}
+                              {evt.event_type === 'window_blur' && <><Eye size={12} /> Window Focus Lost</>}
+                              {evt.event_type === 'fullscreen_exit' && <><Maximize size={12} /> Fullscreen Exited</>}
+                              {evt.event_type === 'paste_attempt' && <><Clipboard size={12} /> Clipboard Paste Blocked</>}
                               {!['tab_switch', 'window_blur', 'fullscreen_exit', 'paste_attempt'].includes(evt.event_type) && evt.event_type}
                             </span>
                           </div>

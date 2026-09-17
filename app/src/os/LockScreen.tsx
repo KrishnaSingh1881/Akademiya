@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
+import { Zap, UserCheck, GraduationCap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import academiyaLogo from '../media/academiya.webp';
 
 export default function LockScreen() {
   const { login, register } = useAuth();
@@ -85,12 +87,11 @@ export default function LockScreen() {
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 28,
               boxShadow: '0 8px 24px rgba(var(--accent), 0.4)',
               marginBottom: 12,
             }}
           >
-            ✨
+            <img src={academiyaLogo} alt="Akademiya" style={{ width: 34, height: 34, objectFit: 'contain' }} />
           </div>
           <h1
             style={{
@@ -119,8 +120,8 @@ export default function LockScreen() {
             gap: 8,
           }}
         >
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
-            ⚡ Instant One-Click Demo Access
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <Zap size={13} strokeWidth={2.2} /> Instant One-Click Demo Access
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             <button
@@ -128,18 +129,18 @@ export default function LockScreen() {
               onClick={() => handleQuickDemo('teacher')}
               disabled={loading}
               className="btn-secondary"
-              style={{ justifyContent: 'center', fontSize: 12, padding: '8px 10px' }}
+              style={{ justifyContent: 'center', fontSize: 12, padding: '8px 10px', display: 'flex', alignItems: 'center', gap: 6 }}
             >
-              👩‍🏫 Teacher
+              <UserCheck size={14} strokeWidth={2} /> Teacher
             </button>
             <button
               type="button"
               onClick={() => handleQuickDemo('student')}
               disabled={loading}
               className="btn-secondary"
-              style={{ justifyContent: 'center', fontSize: 12, padding: '8px 10px' }}
+              style={{ justifyContent: 'center', fontSize: 12, padding: '8px 10px', display: 'flex', alignItems: 'center', gap: 6 }}
             >
-              🎓 Student
+              <GraduationCap size={14} strokeWidth={2} /> Student
             </button>
           </div>
         </div>

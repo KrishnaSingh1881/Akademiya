@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Plus, Brain, Microscope, Target } from 'lucide-react';
 import { useOSStore } from '../os/store/useOSStore';
 
 export default function StudentIntelligenceApp() {
@@ -51,7 +52,7 @@ export default function StudentIntelligenceApp() {
             style={{
               fontSize: 12,
               padding: '6px 12px',
-              display: 'flex',
+              display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
               background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
@@ -60,7 +61,7 @@ export default function StudentIntelligenceApp() {
               boxShadow: '0 2px 8px rgba(168, 85, 247, 0.3)',
             }}
           >
-            <span>➕</span>
+            <Plus size={13} strokeWidth={2.5} />
             <span>Create / Generate Test</span>
           </button>
 
@@ -116,7 +117,7 @@ export default function StudentIntelligenceApp() {
               {/* Gap Header */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 20 }}>🧠</span>
+                  <Brain size={20} color="#818cf8" />
                   <div>
                     <h3 style={{ fontSize: 15, fontWeight: 700 }}>{gap.concept}</h3>
                     <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{gap.subconcept}</p>
@@ -130,16 +131,16 @@ export default function StudentIntelligenceApp() {
                       <button
                         onClick={() => openWindow('diagnostic-lab', { gapId: gap.id, studentId: gap.student_id })}
                         className="btn-primary"
-                        style={{ fontSize: 11, padding: '4px 10px' }}
+                        style={{ fontSize: 11, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 5 }}
                       >
-                        🔬 Run Diagnostic
+                        <Microscope size={12} /> Run Diagnostic
                       </button>
                       <button
                         onClick={() => openWindow('intervention-center', { gapId: gap.id, studentId: gap.student_id })}
                         className="btn-secondary"
-                        style={{ fontSize: 11, padding: '4px 10px' }}
+                        style={{ fontSize: 11, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 5 }}
                       >
-                        🎯 Intervene
+                        <Target size={12} /> Intervene
                       </button>
                     </>
                   )}

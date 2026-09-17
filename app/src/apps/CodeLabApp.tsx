@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Editor from '@monaco-editor/react';
+import { Play, Check, Bot, Lightbulb } from 'lucide-react';
 
 export default function CodeLabApp() {
   const [challenges, setChallenges] = useState<any[]>([]);
@@ -159,14 +160,14 @@ export default function CodeLabApp() {
 
         {/* Controls and Input/Output */}
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <button onClick={handleRun} disabled={running} className="btn-secondary">
-            {running ? 'Running...' : '▶ Run Code'}
+          <button onClick={handleRun} disabled={running} className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            {running ? 'Running...' : <><Play size={12} fill="currentColor" /> Run Code</>}
           </button>
-          <button onClick={handleSubmit} disabled={submitting} className="btn-primary">
-            {submitting ? 'Testing cases...' : '✓ Submit Challenge'}
+          <button onClick={handleSubmit} disabled={submitting} className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            {submitting ? 'Testing cases...' : <><Check size={13} strokeWidth={2.5} /> Submit Challenge</>}
           </button>
-          <button onClick={handleAskAI} disabled={explaining} className="btn-secondary" style={{ marginLeft: 'auto' }}>
-            {explaining ? 'Analyzing...' : '🤖 AI Hint'}
+          <button onClick={handleAskAI} disabled={explaining} className="btn-secondary" style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            {explaining ? 'Analyzing...' : <><Bot size={13} /> AI Hint</>}
           </button>
         </div>
 
@@ -220,8 +221,8 @@ export default function CodeLabApp() {
               </div>
             )}
             {explanation && (
-              <div style={{ color: '#a78bfa', marginTop: 4, fontStyle: 'italic' }}>
-                💡 {explanation}
+              <div style={{ color: '#a78bfa', marginTop: 4, fontStyle: 'italic', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                <Lightbulb size={13} /> {explanation}
               </div>
             )}
           </div>

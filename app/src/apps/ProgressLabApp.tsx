@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Trophy } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function ProgressLabApp() {
@@ -52,7 +53,7 @@ export default function ProgressLabApp() {
                 {/* Milestone Banner */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 24 }}>🏆</span>
+                    <Trophy size={24} color="#f59e0b" />
                     <div>
                       <h3 style={{ fontSize: 16, fontWeight: 800 }}>{prog.concept} Learning Loop Closed</h3>
                       <p style={{ fontSize: 11, color: 'var(--text-secondary)' }}>

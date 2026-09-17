@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { LightbulbOn } from '@keyline-icons/react';
+import { FileText, Code2, Search, Sparkles, Target } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useOSStore } from '../os/store/useOSStore';
 
@@ -70,18 +71,18 @@ export default function MyLearningApp() {
             <LightbulbOn width={24} height={24} strokeWidth={2} className="keyline-theme-icon" />
           </div>
           <div>
-            <h2 style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.02em' }}>Welcome back, {user?.name}! 👋</h2>
+            <h2 style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.02em' }}>Welcome back, {user?.name}!</h2>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4, lineHeight: 1.4 }}>
               Your personalized learning trajectory, grounded in transparent verifiable evidence.
             </p>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
-          <button onClick={() => openWindow('practice-lab')} className="btn-primary">
-            📝 Open Practice Lab
+          <button onClick={() => openWindow('practice-lab')} className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <FileText size={14} /> Open Practice Lab
           </button>
-          <button onClick={() => openWindow('code-lab')} className="btn-secondary">
-            💻 Code Lab
+          <button onClick={() => openWindow('code-lab')} className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <Code2 size={14} /> Code Lab
           </button>
         </div>
       </div>
@@ -102,7 +103,9 @@ export default function MyLearningApp() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h3 style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em' }}>🔍 Conceptual Focus Areas</h3>
+            <h3 style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <Search size={15} /> Conceptual Focus Areas
+            </h3>
             <span className="badge badge-emerging">{activeGaps.length} Active</span>
           </div>
 
@@ -120,7 +123,7 @@ export default function MyLearningApp() {
                 gap: 8,
               }}
             >
-              <span style={{ fontSize: 24 }}>✨</span>
+              <Sparkles size={24} color="#818cf8" />
               <span style={{ color: 'var(--text-secondary)', fontWeight: 600, fontSize: 13 }}>
                 No active learning gaps!
               </span>
@@ -168,7 +171,9 @@ export default function MyLearningApp() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h3 style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em' }}>🎯 Assigned Interventions</h3>
+            <h3 style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <Target size={15} /> Assigned Interventions
+            </h3>
             <span className="badge badge-active">{interventions.length} Assigned</span>
           </div>
 
@@ -186,7 +191,7 @@ export default function MyLearningApp() {
                 gap: 8,
               }}
             >
-              <span style={{ fontSize: 24 }}>🎯</span>
+              <Target size={24} color="#818cf8" />
               <span style={{ color: 'var(--text-secondary)', fontWeight: 600, fontSize: 13 }}>
                 No assigned remedial interventions
               </span>

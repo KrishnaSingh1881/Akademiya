@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Sun, Moon, Check } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useOSSettings, type FontSize } from '../os/store/useOSSettings';
@@ -84,7 +85,11 @@ export default function SettingsApp() {
             <button type="submit" className="btn-primary" style={{ padding: '6px 16px', fontSize: 12 }}>
               Save Name
             </button>
-            {saved && <span style={{ fontSize: 12, color: '#34d399' }}>✓ Profile updated!</span>}
+            {saved && (
+              <span style={{ fontSize: 12, color: '#34d399', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <Check size={13} /> Profile updated!
+              </span>
+            )}
           </div>
         </form>
       </div>
@@ -99,8 +104,8 @@ export default function SettingsApp() {
             <div style={{ fontSize: 13, fontWeight: 600 }}>Theme Mode</div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Toggle between Liquid Glass Dark and Clean Light</div>
           </div>
-          <button onClick={toggleTheme} className="btn-secondary" style={{ fontSize: 12, padding: '6px 14px' }}>
-            {theme === 'dark' ? '☀️ Switch to Light' : '🌙 Switch to Dark'}
+          <button onClick={toggleTheme} className="btn-secondary" style={{ fontSize: 12, padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            {theme === 'dark' ? <><Sun size={13} /> Switch to Light</> : <><Moon size={13} /> Switch to Dark</>}
           </button>
         </div>
 

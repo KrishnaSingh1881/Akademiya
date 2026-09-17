@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Target, ClipboardList } from 'lucide-react';
 
 export default function InterventionCenterApp() {
   const [allGaps, setAllGaps] = useState<any[]>([]);
@@ -99,8 +100,17 @@ export default function InterventionCenterApp() {
               onClick={handleCreateIntervention}
               disabled={generating}
               className="btn-primary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
-              {generating ? '🎯 Formulating Plan...' : '📋 Create Targeted Intervention'}
+              {generating ? (
+                <>
+                  <Target size={14} className="animate-spin" /> Formulating Plan...
+                </>
+              ) : (
+                <>
+                  <ClipboardList size={14} /> Create Targeted Intervention
+                </>
+              )}
             </button>
           </div>
         )}

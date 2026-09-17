@@ -1,5 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import {
+  Target,
+  FileText,
+  Shield,
+  Maximize,
+  BookOpen,
+  AlertTriangle,
+  X,
+  Bot,
+  UserCheck,
+  CheckCircle2,
+  AlertCircle,
+  BarChart3,
+  Calendar,
+  Zap,
+  Check,
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function PracticeLabApp() {
@@ -92,7 +109,7 @@ export default function PracticeLabApp() {
     // 1. Tab Switching & Browser Visibility Listener
     const handleVisibilityChange = () => {
       if (document.hidden && rules.block_tab_switch !== false) {
-        setViolationAlert('⚠️ Focus Alert: Tab switch detected! Event logged to teacher audit trail.');
+        setViolationAlert('Focus Alert: Tab switch detected! Event logged to teacher audit trail.');
         logIntegrityEvent('tab_switch', { reason: 'visibility_hidden' });
       }
     };
@@ -100,7 +117,7 @@ export default function PracticeLabApp() {
     // 2. Window Blur Listener (user clicked outside or switched window)
     const handleBlur = () => {
       if (rules.block_tab_switch !== false) {
-        setViolationAlert('⚠️ Focus Alert: Window lost focus! Please stay inside the exam window.');
+        setViolationAlert('Focus Alert: Window lost focus! Please stay inside the exam window.');
         logIntegrityEvent('window_blur', { reason: 'window_blur' });
       }
     };
@@ -110,7 +127,7 @@ export default function PracticeLabApp() {
       const inFullscreen = Boolean(document.fullscreenElement);
       setIsFullscreen(inFullscreen);
       if (!inFullscreen && rules.fullscreen !== false) {
-        setViolationAlert('⚠️ Fullscreen Exited: Please return to fullscreen mode.');
+        setViolationAlert('Fullscreen Exited: Please return to fullscreen mode.');
         logIntegrityEvent('fullscreen_exit', { reason: 'fullscreen_lost' });
       }
     };
@@ -119,7 +136,7 @@ export default function PracticeLabApp() {
     const handlePaste = (e: ClipboardEvent) => {
       if (rules.block_clipboard !== false) {
         e.preventDefault();
-        setViolationAlert('🚫 Clipboard Paste is restricted during this proctored test.');
+        setViolationAlert('Clipboard Paste is restricted during this proctored test.');
         logIntegrityEvent('paste_attempt', { reason: 'paste_blocked' });
       }
     };
@@ -263,16 +280,16 @@ export default function PracticeLabApp() {
           <button
             onClick={() => { setViewMode('practice'); if (examSessionStarted) exitAssessmentSession(); }}
             className={viewMode === 'practice' && !examSessionStarted ? 'btn-primary' : 'btn-secondary'}
-            style={{ fontSize: 12, padding: '5px 12px' }}
+            style={{ fontSize: 12, padding: '5px 12px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
           >
-            🎯 Practice Pool
+            <Target size={13} /> Practice Pool
           </button>
           <button
             onClick={() => { setViewMode('assessments'); if (examSessionStarted) exitAssessmentSession(); }}
             className={viewMode === 'assessments' && !examSessionStarted ? 'btn-primary' : 'btn-secondary'}
-            style={{ fontSize: 12, padding: '5px 12px' }}
+            style={{ fontSize: 12, padding: '5px 12px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
           >
-            📝 Assigned Assessments ({assessments.length})
+            <FileText size={13} /> Assigned Assessments ({assessments.length})
           </button>
         </div>
 
@@ -291,7 +308,7 @@ export default function PracticeLabApp() {
                   border: '1px solid rgba(99, 102, 241, 0.4)',
                 }}
               >
-                <span style={{ fontSize: 14 }}>🛡️</span>
+                <Shield size={14} color="#a5b4fc" />
                 <span style={{ fontSize: 11, fontWeight: 700, color: '#a5b4fc' }}>Anticheat Active</span>
                 <span
                   className="badge"
@@ -315,9 +332,12 @@ export default function PracticeLabApp() {
                       fontSize: 10,
                       cursor: 'pointer',
                       fontWeight: 600,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
                     }}
                   >
-                    ⛶ Enter Fullscreen
+                    <Maximize size={11} /> Enter Fullscreen
                   </button>
                 )}
               </div>
@@ -335,7 +355,7 @@ export default function PracticeLabApp() {
                   color: '#6ee7b7',
                 }}
               >
-                <span>🌿</span>
+                <BookOpen size={13} />
                 <span>Open Formative Mode</span>
               </div>
             )}
@@ -369,16 +389,15 @@ export default function PracticeLabApp() {
             boxShadow: '0 4px 16px rgba(239, 68, 68, 0.4)',
           }}
         >
-
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 18 }}>🚨</span>
+            <AlertTriangle size={18} color="#fff" />
             <span>{violationAlert}</span>
           </div>
           <button
             onClick={() => setViolationAlert(null)}
-            style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 14 }}
+            style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
           >
-            ✕
+            <X size={14} />
           </button>
         </div>
       )}
@@ -430,9 +449,12 @@ export default function PracticeLabApp() {
                             color: '#a5b4fc',
                             border: '1px solid rgba(99, 102, 241, 0.5)',
                             fontSize: 10,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
                           }}
                         >
-                          🛡️ Anticheat Active
+                          <Shield size={11} /> Anticheat Active
                         </span>
                       ) : (
                         <span
@@ -442,9 +464,12 @@ export default function PracticeLabApp() {
                             color: '#6ee7b7',
                             border: '1px solid rgba(16, 185, 129, 0.3)',
                             fontSize: 10,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
                           }}
                         >
-                          🌿 Formative
+                          <BookOpen size={11} /> Formative
                         </span>
                       )}
                     </div>
@@ -462,9 +487,12 @@ export default function PracticeLabApp() {
                           background: 'rgba(99, 102, 241, 0.08)',
                           fontSize: 11,
                           color: '#c7d2fe',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
                         }}
                       >
-                        ⚠️ Focus Rules: Fullscreen required, tab switching & window blur tracked deterministically.
+                        <AlertTriangle size={12} color="#f59e0b" /> Focus Rules: Fullscreen required, tab switching & window blur tracked deterministically.
                       </div>
                     )}
                   </div>
@@ -482,7 +510,7 @@ export default function PracticeLabApp() {
                       gap: 6,
                     }}
                   >
-                    <span>{a.proctoring_enabled ? '🚀 Enter Proctored Exam' : '▶ Begin Assessment'}</span>
+                    <span>{a.proctoring_enabled ? 'Enter Proctored Exam' : 'Begin Assessment'}</span>
                   </button>
                 </div>
               ))}
@@ -551,16 +579,16 @@ export default function PracticeLabApp() {
                       <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent-light)', textTransform: 'uppercase' }}>
                         {examSessionStarted ? `Q${idx + 1}: ${q.concept}` : q.concept}
                       </span>
-                      <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-                        {q.source === 'ai' ? '🤖 AI' : '👩‍🏫 Teacher'}
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        {q.source === 'ai' ? <><Bot size={11} /> AI</> : <><UserCheck size={11} /> Teacher</>}
                       </span>
                     </div>
                     <div style={{ fontSize: 12, fontWeight: 600, marginTop: 4, lineClamp: 2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                       {q.statement}
                     </div>
                     {attemptsCount > 0 && (
-                      <div style={{ fontSize: 10, marginTop: 6, color: lastAttempt?.is_correct ? '#34d399' : '#f87171' }}>
-                        {lastAttempt?.is_correct ? '✓ Solved' : '✗ Weak attempt'} ({attemptsCount} tries)
+                      <div style={{ fontSize: 10, marginTop: 6, color: lastAttempt?.is_correct ? '#34d399' : '#f87171', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        {lastAttempt?.is_correct ? <><Check size={10} /> Solved</> : <><X size={10} /> Weak attempt</>} ({attemptsCount} tries)
                       </div>
                     )}
                   </div>
@@ -590,8 +618,8 @@ export default function PracticeLabApp() {
                 {/* Options (for MCQ) OR Textarea (for Descriptive) */}
                 {selectedQuestion.type === 'descriptive' ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
-                      📝 Provide your complete explanation in your own words:
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <FileText size={13} /> Provide your complete explanation in your own words:
                     </div>
                     <textarea
                       value={descriptiveAnswer}
@@ -678,9 +706,13 @@ export default function PracticeLabApp() {
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 20 }}>
-                          {lastResult.evaluation?.is_correct ? '🎉' : lastResult.evaluation?.verdict === 'partial' ? '⚖️' : '⚠️'}
-                        </span>
+                        {lastResult.evaluation?.is_correct ? (
+                          <CheckCircle2 size={20} color="#34d399" />
+                        ) : lastResult.evaluation?.verdict === 'partial' ? (
+                          <AlertCircle size={20} color="#fbbf24" />
+                        ) : (
+                          <AlertTriangle size={20} color="#f87171" />
+                        )}
                         <div style={{ fontWeight: 800, fontSize: 15 }}>
                           {lastResult.evaluation?.verdict
                             ? `Verdict: ${lastResult.evaluation.verdict.toUpperCase()} (Marks: ${lastResult.evaluation.marks_awarded})`
@@ -708,14 +740,16 @@ export default function PracticeLabApp() {
                     {lastResult.evaluation?.grading_details && (
                       <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12 }}>
                         {lastResult.evaluation.grading_details.similarity_score !== undefined && (
-                          <div style={{ color: 'var(--text-secondary)' }}>
-                            📊 Semantic Similarity: <strong>{(lastResult.evaluation.grading_details.similarity_score * 100).toFixed(1)}%</strong>
+                          <div style={{ color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                            <BarChart3 size={13} /> Semantic Similarity: <strong>{(lastResult.evaluation.grading_details.similarity_score * 100).toFixed(1)}%</strong>
                           </div>
                         )}
 
                         {lastResult.evaluation.grading_details.covered?.length > 0 && (
                           <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: 10, borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                            <div style={{ fontWeight: 700, color: '#34d399', marginBottom: 4 }}>✓ Concepts Covered:</div>
+                            <div style={{ fontWeight: 700, color: '#34d399', marginBottom: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <Check size={13} /> Concepts Covered:
+                            </div>
                             <ul style={{ margin: 0, paddingLeft: 18 }}>
                               {lastResult.evaluation.grading_details.covered.map((c: string, i: number) => (
                                 <li key={i}>{c}</li>
@@ -726,7 +760,9 @@ export default function PracticeLabApp() {
 
                         {lastResult.evaluation.grading_details.missed?.length > 0 && (
                           <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: 10, borderRadius: 8, border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                            <div style={{ fontWeight: 700, color: '#f87171', marginBottom: 4 }}>✗ Points Missed / To Elaborate:</div>
+                            <div style={{ fontWeight: 700, color: '#f87171', marginBottom: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <X size={13} /> Points Missed / To Elaborate:
+                            </div>
                             <ul style={{ margin: 0, paddingLeft: 18 }}>
                               {lastResult.evaluation.grading_details.missed.map((m: string, i: number) => (
                                 <li key={i}>{m}</li>
@@ -739,15 +775,15 @@ export default function PracticeLabApp() {
 
                     {/* Auto Attendance Notification */}
                     {lastResult.auto_attendance?.length > 0 && (
-                      <div style={{ marginTop: 10, fontSize: 11, color: '#34d399', fontWeight: 600 }}>
-                        📅 Auto-Attendance: Attendance recorded for active session window!
+                      <div style={{ marginTop: 10, fontSize: 11, color: '#34d399', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                        <Calendar size={13} /> Auto-Attendance: Attendance recorded for active session window!
                       </div>
                     )}
 
                     {/* Gap Formed Signal */}
                     {lastResult.gap_detected?.is_new && (
-                      <div style={{ marginTop: 10, fontSize: 12, color: '#fbbf24', fontWeight: 600 }}>
-                        ⚡ Note: Repeated incorrect attempts have registered an emerging learning gap in {selectedQuestion.concept}. Your teacher can now run a targeted diagnostic probe.
+                      <div style={{ marginTop: 10, fontSize: 12, color: '#fbbf24', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                        <Zap size={13} /> Note: Repeated incorrect attempts have registered an emerging learning gap in {selectedQuestion.concept}. Your teacher can now run a targeted diagnostic probe.
                       </div>
                     )}
                   </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Microscope, Check } from 'lucide-react';
 import { useOSStore } from '../os/store/useOSStore';
 
 export default function DiagnosticLabApp() {
@@ -101,8 +102,17 @@ export default function DiagnosticLabApp() {
               onClick={handleLaunchDiagnostic}
               disabled={running}
               className="btn-primary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
-              {running ? '🔬 Formulating Probe...' : '🚀 Launch Targeted Diagnostic'}
+              {running ? (
+                <>
+                  <Microscope size={14} className="animate-spin" /> Formulating Probe...
+                </>
+              ) : (
+                <>
+                  <Microscope size={14} /> Launch Targeted Diagnostic
+                </>
+              )}
             </button>
           </div>
         )}
@@ -170,7 +180,9 @@ export default function DiagnosticLabApp() {
                             : 'var(--text-secondary)',
                         }}
                       >
-                        {opt.text} {tq.correct_option_ids?.includes(opt.id) ? '✓' : ''}
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          {opt.text} {tq.correct_option_ids?.includes(opt.id) && <Check size={12} />}
+                        </span>
                       </div>
                     ))}
                   </div>
