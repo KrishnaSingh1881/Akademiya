@@ -28,7 +28,10 @@ export default function Desktop() {
 
     const handleOpenStudio = () => setShowTestModal(true);
     window.addEventListener('akademiya-open-test-studio', handleOpenStudio);
-    return () => window.removeEventListener('akademiya-open-test-studio', handleOpenStudio);
+    return () => {
+      window.removeEventListener('akademiya-open-test-studio', handleOpenStudio);
+      useOSStore.getState().closeAll();
+    };
   }, [user]);
 
   const desktopBgStyle = useMemo<React.CSSProperties>(() => {

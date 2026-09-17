@@ -64,6 +64,7 @@ export default function CodeLabApp() {
   const [executingCommand, setExecutingCommand] = useState(false);
   const [commandHistoryList, setCommandHistoryList] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState<number>(-1);
+  const [terminalLayout, setTerminalLayout] = useState<'split' | 'terminal' | 'editor'>('split');
 
   const terminalEndRef = useRef<HTMLDivElement>(null);
   const terminalInputRef = useRef<HTMLInputElement>(null);
@@ -399,6 +400,58 @@ export default function CodeLabApp() {
               Sandboxed: C++ (GCC 16) • Python (3.14)
             </span>
 
+            {/* Layout Mode Control */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'rgba(255, 255, 255, 0.06)', borderRadius: 6, padding: 2 }}>
+              <button
+                onClick={() => setTerminalLayout('split')}
+                title="Split Editor & Terminal"
+                style={{
+                  background: terminalLayout === 'split' ? '#38bdf8' : 'transparent',
+                  color: terminalLayout === 'split' ? '#000' : 'var(--text-muted)',
+                  border: 'none',
+                  borderRadius: 4,
+                  padding: '3px 8px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Split
+              </button>
+              <button
+                onClick={() => setTerminalLayout('editor')}
+                title="Maximize Editor"
+                style={{
+                  background: terminalLayout === 'editor' ? '#38bdf8' : 'transparent',
+                  color: terminalLayout === 'editor' ? '#000' : 'var(--text-muted)',
+                  border: 'none',
+                  borderRadius: 4,
+                  padding: '3px 8px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Editor
+              </button>
+              <button
+                onClick={() => setTerminalLayout('terminal')}
+                title="Maximize Terminal"
+                style={{
+                  background: terminalLayout === 'terminal' ? '#38bdf8' : 'transparent',
+                  color: terminalLayout === 'terminal' ? '#000' : 'var(--text-muted)',
+                  border: 'none',
+                  borderRadius: 4,
+                  padding: '3px 8px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Terminal
+              </button>
+            </div>
+
             {activeFile && (
               <button
                 onClick={handleQuickRunActiveFile}
@@ -538,338 +591,375 @@ export default function CodeLabApp() {
           </div>
 
           {/* Right Column: Split into Editor (Top) & Terminal (Bottom) */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0, height: '100%' }}>
-            {/* ── MONACO CODE EDITOR PANE (55% Height) ── */}
-            <div
-              className="glass-panel"
-              style={{
-                borderRadius: 12,
-                display: 'flex',
-                flexDirection: 'column',
-                height: '55%',
-                minHeight: 180,
-                overflow: 'hidden',
-              }}
-            >
-              {/* Tab Bar & Editor Actions */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0, height: '100%', flex: 1, overflow: 'hidden' }}>
+            {/* ── MONACO CODE EDITOR PANE ── */}
+            {terminalLayout !== 'terminal' && (
               <div
+                className="glass-panel"
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  background: 'rgba(0, 0, 0, 0.25)',
-                  borderBottom: '1px solid var(--panel-border)',
-                  padding: '2px 8px',
-                  flexShrink: 0,
-                }}
-              >
-                {/* Tabs */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, overflowX: 'auto' }}>
-                  {openFiles.map((of) => {
-                    const isActive = of.path === activeFilePath;
-                    return (
-                      <div
-                        key={of.path}
-                        onClick={() => setActiveFilePath(of.path)}
-                        style={{
-                          padding: '6px 12px',
-                          borderTopLeftRadius: 6,
-                          borderTopRightRadius: 6,
-                          background: isActive ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
-                          color: isActive ? '#38bdf8' : 'var(--text-secondary)',
-                          fontSize: 11,
-                          fontWeight: isActive ? 700 : 500,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          borderBottom: isActive ? '2px solid #38bdf8' : '2px solid transparent',
-                        }}
-                      >
-                        <span>{of.path}</span>
-                        {of.isDirty && <span style={{ color: '#f59e0b', fontSize: 10 }}>●</span>}
-                        <span
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenFiles((prev) => prev.filter((f) => f.path !== of.path));
-                            if (activeFilePath === of.path) {
-                              const rem = openFiles.filter((f) => f.path !== of.path);
-                              if (rem.length > 0) setActiveFilePath(rem[0].path);
-                            }
-                          }}
-                          style={{ opacity: 0.6, marginLeft: 2 }}
-                        >
-                          <X size={11} />
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Save button */}
-                {activeFile && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <button
-                      onClick={saveActiveFile}
-                      disabled={savingFile}
-                      className="btn-secondary"
-                      style={{
-                        fontSize: 11,
-                        padding: '3px 8px',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                      }}
-                    >
-                      {saveSuccess ? <Check size={11} color="#34d399" /> : <Save size={11} />}
-                      <span>{savingFile ? 'Saving...' : saveSuccess ? 'Saved' : 'Save'}</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Editor Component */}
-              <div style={{ flex: 1, minHeight: 0 }}>
-                {activeFile ? (
-                  <Editor
-                    height="100%"
-                    language={activeFile.language}
-                    theme="vs-dark"
-                    value={activeFile.content}
-                    onChange={(val) => {
-                      setOpenFiles((prev) =>
-                        prev.map((f) =>
-                          f.path === activeFilePath
-                            ? { ...f, content: val || '', isDirty: true }
-                            : f
-                        )
-                      );
-                    }}
-                    options={{
-                      fontSize: 12,
-                      minimap: { enabled: false },
-                      scrollBeyondLastLine: false,
-                      wordWrap: 'on',
-                      lineNumbers: 'on',
-                      renderWhitespace: 'selection',
-                      automaticLayout: true,
-                    }}
-                  />
-                ) : (
-                  <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
-                    Select a file from the sidebar or click + to create one.
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* ── SANDBOXED INTERACTIVE TERMINAL PANE (45% Height) ── */}
-            <div
-              className="glass-panel"
-              style={{
-                borderRadius: 12,
-                display: 'flex',
-                flexDirection: 'column',
-                height: '45%',
-                minHeight: 160,
-                background: '#090d16',
-                border: '1px solid rgba(56, 189, 248, 0.25)',
-                overflow: 'hidden',
-                fontFamily: 'monospace',
-              }}
-            >
-              {/* Terminal Header & Quick Actions Bar */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '6px 12px',
-                  background: 'rgba(255, 255, 255, 0.04)',
-                  borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-                  fontSize: 11,
-                  flexShrink: 0,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#34d399' }} />
-                  <span style={{ fontWeight: 800, color: '#38bdf8' }}>student@akademiya</span>
-                  <span style={{ color: 'var(--text-muted)' }}>:</span>
-                  <span style={{ color: '#a78bfa' }}>~/sandbox{terminalCwd ? `/${terminalCwd}` : ''}</span>
-                </div>
-
-                {/* Quick Action Commands */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <button
-                    onClick={() => runTerminalCommand('python3 main.py')}
-                    style={{
-                      fontSize: 10,
-                      padding: '2px 7px',
-                      borderRadius: 4,
-                      background: 'rgba(250, 204, 21, 0.15)',
-                      color: '#facc15',
-                      border: '1px solid rgba(250, 204, 21, 0.3)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    python3 main.py
-                  </button>
-                  <button
-                    onClick={() => runTerminalCommand('g++ solution.cpp -o solution && ./solution')}
-                    style={{
-                      fontSize: 10,
-                      padding: '2px 7px',
-                      borderRadius: 4,
-                      background: 'rgba(96, 165, 250, 0.15)',
-                      color: '#60a5fa',
-                      border: '1px solid rgba(96, 165, 250, 0.3)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    g++ solution.cpp &amp;&amp; ./solution
-                  </button>
-                  <button
-                    onClick={() => runTerminalCommand('ls -la')}
-                    style={{
-                      fontSize: 10,
-                      padding: '2px 7px',
-                      borderRadius: 4,
-                      background: 'rgba(255, 255, 255, 0.06)',
-                      color: 'var(--text-secondary)',
-                      border: '1px solid var(--panel-border)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    ls -la
-                  </button>
-                  <button
-                    onClick={() => setTerminalHistory([])}
-                    style={{
-                      fontSize: 10,
-                      padding: '2px 6px',
-                      borderRadius: 4,
-                      background: 'rgba(255, 255, 255, 0.06)',
-                      color: 'var(--text-muted)',
-                      border: 'none',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    clear
-                  </button>
-                </div>
-              </div>
-
-              {/* Terminal Logs View */}
-              <div
-                style={{
-                  flex: 1,
-                  padding: 12,
-                  overflowY: 'auto',
+                  borderRadius: 12,
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 8,
-                  fontSize: 11,
-                  lineHeight: 1.45,
+                  flex: terminalLayout === 'editor' ? '1 1 100%' : '1 1 50%',
+                  minHeight: 0,
+                  overflow: 'hidden',
                 }}
               >
-                {terminalHistory.map((item, idx) => (
-                  <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {/* Command Prompt Line */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#38bdf8' }}>
-                      <span style={{ color: '#34d399' }}>➜</span>
-                      <span style={{ color: '#a78bfa' }}>~/sandbox{item.cwd ? `/${item.cwd}` : ''}$</span>
-                      <span style={{ color: '#fff', fontWeight: 700 }}>{item.command}</span>
-                      <span style={{ fontSize: 9, color: 'var(--text-muted)', marginLeft: 'auto' }}>
-                        {item.timestamp}
-                      </span>
-                    </div>
+                {/* Tab Bar & Editor Actions */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    background: 'rgba(0, 0, 0, 0.25)',
+                    borderBottom: '1px solid var(--panel-border)',
+                    padding: '2px 8px',
+                    flexShrink: 0,
+                  }}
+                >
+                  {/* Tabs */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, overflowX: 'auto' }}>
+                    {openFiles.map((of) => {
+                      const isActive = of.path === activeFilePath;
+                      return (
+                        <div
+                          key={of.path}
+                          onClick={() => setActiveFilePath(of.path)}
+                          style={{
+                            padding: '6px 12px',
+                            borderTopLeftRadius: 6,
+                            borderTopRightRadius: 6,
+                            background: isActive ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                            color: isActive ? '#38bdf8' : 'var(--text-secondary)',
+                            fontSize: 11,
+                            fontWeight: isActive ? 700 : 500,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            borderBottom: isActive ? '2px solid #38bdf8' : '2px solid transparent',
+                          }}
+                        >
+                          <span>{of.path}</span>
+                          {of.isDirty && <span style={{ color: '#f59e0b', fontSize: 10 }}>●</span>}
+                          <span
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenFiles((prev) => prev.filter((f) => f.path !== of.path));
+                              if (activeFilePath === of.path) {
+                                const rem = openFiles.filter((f) => f.path !== of.path);
+                                if (rem.length > 0) setActiveFilePath(rem[0].path);
+                              }
+                            }}
+                            style={{ opacity: 0.6, marginLeft: 2 }}
+                          >
+                            <X size={11} />
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
 
-                    {/* Stdout Output */}
-                    {item.stdout && (
-                      <pre
+                  {/* Save button & Layout switcher */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {activeFile && (
+                      <button
+                        onClick={saveActiveFile}
+                        disabled={savingFile}
+                        className="btn-secondary"
                         style={{
-                          margin: 0,
-                          padding: '2px 0',
-                          color: '#e2e8f0',
-                          whiteSpace: 'pre-wrap',
-                          wordBreak: 'break-word',
-                          fontFamily: 'monospace',
+                          fontSize: 11,
+                          padding: '3px 8px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
                         }}
                       >
-                        {item.stdout}
-                      </pre>
-                    )}
-
-                    {/* Stderr Output */}
-                    {item.stderr && (
-                      <pre
-                        style={{
-                          margin: 0,
-                          padding: '2px 0',
-                          color: '#f87171',
-                          whiteSpace: 'pre-wrap',
-                          wordBreak: 'break-word',
-                          fontFamily: 'monospace',
-                        }}
-                      >
-                        {item.stderr}
-                      </pre>
+                        {saveSuccess ? <Check size={11} color="#34d399" /> : <Save size={11} />}
+                        <span>{savingFile ? 'Saving...' : saveSuccess ? 'Saved' : 'Save'}</span>
+                      </button>
                     )}
                   </div>
-                ))}
-                <div ref={terminalEndRef} />
-              </div>
+                </div>
 
-              {/* Terminal Input Line */}
+                {/* Editor Component */}
+                <div style={{ flex: 1, minHeight: 0 }}>
+                  {activeFile ? (
+                    <Editor
+                      height="100%"
+                      language={activeFile.language}
+                      theme="vs-dark"
+                      value={activeFile.content}
+                      onChange={(val) => {
+                        setOpenFiles((prev) =>
+                          prev.map((f) =>
+                            f.path === activeFilePath
+                              ? { ...f, content: val || '', isDirty: true }
+                              : f
+                          )
+                        );
+                      }}
+                      options={{
+                        fontSize: 12,
+                        minimap: { enabled: false },
+                        scrollBeyondLastLine: false,
+                        wordWrap: 'on',
+                        lineNumbers: 'on',
+                        renderWhitespace: 'selection',
+                        automaticLayout: true,
+                      }}
+                    />
+                  ) : (
+                    <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
+                      Select a file from the sidebar or click + to create one.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ── SANDBOXED INTERACTIVE TERMINAL PANE ── */}
+            {terminalLayout !== 'editor' && (
               <div
+                className="glass-panel"
+                onClick={() => terminalInputRef.current?.focus()}
                 style={{
+                  borderRadius: 12,
                   display: 'flex',
-                  alignItems: 'center',
-                  padding: '8px 12px',
-                  background: 'rgba(0, 0, 0, 0.4)',
-                  borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-                  gap: 8,
+                  flexDirection: 'column',
+                  flex: terminalLayout === 'terminal' ? '1 1 100%' : '1 1 50%',
+                  minHeight: 0,
+                  background: '#090d16',
+                  border: '1px solid rgba(56, 189, 248, 0.4)',
+                  overflow: 'hidden',
+                  fontFamily: 'monospace',
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+                  position: 'relative',
                 }}
               >
-                <span style={{ color: '#34d399', fontWeight: 800 }}>➜</span>
-                <span style={{ color: '#a78bfa', fontSize: 11 }}>~/sandbox{terminalCwd ? `/${terminalCwd}` : ''}$</span>
-                <input
-                  ref={terminalInputRef}
-                  type="text"
-                  value={commandInput}
-                  onChange={(e) => setCommandInput(e.target.value)}
-                  onKeyDown={handleTerminalKeyDown}
-                  disabled={executingCommand}
-                  placeholder={executingCommand ? 'Executing command...' : 'Type bash command (python, g++, gcc, ls, cd, ./...)'}
+                {/* Terminal Header & Quick Actions Bar */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '6px 12px',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                    fontSize: 11,
+                    flexShrink: 0,
+                    gap: 8,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#34d399' }} />
+                    <span style={{ fontWeight: 800, color: '#38bdf8' }}>student@akademiya</span>
+                    <span style={{ color: 'var(--text-muted)' }}>:</span>
+                    <span style={{ color: '#a78bfa' }}>~/sandbox{terminalCwd ? `/${terminalCwd}` : ''}</span>
+                  </div>
+
+                  {/* Quick Action Commands & Layout Switcher */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); runTerminalCommand('python3 main.py'); }}
+                      style={{
+                        fontSize: 10,
+                        padding: '2px 7px',
+                        borderRadius: 4,
+                        background: 'rgba(250, 204, 21, 0.15)',
+                        color: '#facc15',
+                        border: '1px solid rgba(250, 204, 21, 0.3)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      python3 main.py
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); runTerminalCommand('g++ solution.cpp -o solution && ./solution'); }}
+                      style={{
+                        fontSize: 10,
+                        padding: '2px 7px',
+                        borderRadius: 4,
+                        background: 'rgba(96, 165, 250, 0.15)',
+                        color: '#60a5fa',
+                        border: '1px solid rgba(96, 165, 250, 0.3)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      g++ solution.cpp &amp;&amp; ./solution
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); runTerminalCommand('ls -la'); }}
+                      style={{
+                        fontSize: 10,
+                        padding: '2px 7px',
+                        borderRadius: 4,
+                        background: 'rgba(255, 255, 255, 0.06)',
+                        color: 'var(--text-secondary)',
+                        border: '1px solid var(--panel-border)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      ls -la
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setTerminalHistory([]); }}
+                      style={{
+                        fontSize: 10,
+                        padding: '2px 6px',
+                        borderRadius: 4,
+                        background: 'rgba(255, 255, 255, 0.06)',
+                        color: 'var(--text-muted)',
+                        border: 'none',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      clear
+                    </button>
+
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setTerminalLayout(terminalLayout === 'terminal' ? 'split' : 'terminal'); }}
+                      title={terminalLayout === 'terminal' ? 'Split View' : 'Maximize Terminal'}
+                      style={{
+                        fontSize: 10,
+                        padding: '2px 7px',
+                        borderRadius: 4,
+                        background: 'rgba(255, 255, 255, 0.06)',
+                        color: terminalLayout === 'terminal' ? '#38bdf8' : 'var(--text-secondary)',
+                        border: '1px solid var(--panel-border)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {terminalLayout === 'terminal' ? 'Split View' : 'Maximize'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Terminal Logs View */}
+                <div
                   style={{
                     flex: 1,
-                    background: 'transparent',
-                    border: 'none',
-                    outline: 'none',
-                    color: '#fff',
-                    fontSize: 12,
-                    fontFamily: 'monospace',
+                    minHeight: 0,
+                    padding: 10,
+                    overflowY: 'auto',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6,
+                    fontSize: 11,
+                    lineHeight: 1.4,
                   }}
-                />
-                {executingCommand ? (
-                  <span style={{ fontSize: 10, color: '#38bdf8' }}>Running...</span>
-                ) : (
+                >
+                  {terminalHistory.map((item, idx) => (
+                    <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {/* Command Prompt Line */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#38bdf8' }}>
+                        <span style={{ color: '#34d399' }}>➜</span>
+                        <span style={{ color: '#a78bfa' }}>~/sandbox{item.cwd ? `/${item.cwd}` : ''}$</span>
+                        <span style={{ color: '#fff', fontWeight: 700 }}>{item.command}</span>
+                        <span style={{ fontSize: 9, color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                          {item.timestamp}
+                        </span>
+                      </div>
+
+                      {/* Stdout Output */}
+                      {item.stdout && (
+                        <pre
+                          style={{
+                            margin: 0,
+                            padding: '2px 0',
+                            color: '#e2e8f0',
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-word',
+                            fontFamily: 'monospace',
+                          }}
+                        >
+                          {item.stdout}
+                        </pre>
+                      )}
+
+                      {/* Stderr Output */}
+                      {item.stderr && (
+                        <pre
+                          style={{
+                            margin: 0,
+                            padding: '2px 0',
+                            color: '#f87171',
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-word',
+                            fontFamily: 'monospace',
+                          }}
+                        >
+                          {item.stderr}
+                        </pre>
+                      )}
+                    </div>
+                  ))}
+                  <div ref={terminalEndRef} />
+                </div>
+
+                {/* ── PERMANENTLY PINNED, PROMINENT TERMINAL INPUT BAR ── */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '8px 12px',
+                    background: '#0c1222',
+                    borderTop: '2px solid rgba(56, 189, 248, 0.4)',
+                    gap: 10,
+                    flexShrink: 0,
+                    boxShadow: '0 -4px 14px rgba(0, 0, 0, 0.5)',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                    <span style={{ color: '#34d399', fontWeight: 800, fontSize: 13 }}>➜</span>
+                    <span style={{ color: '#a78bfa', fontSize: 11, fontWeight: 700 }}>~/sandbox{terminalCwd ? `/${terminalCwd}` : ''}$</span>
+                  </div>
+                  <input
+                    ref={terminalInputRef}
+                    type="text"
+                    value={commandInput}
+                    onChange={(e) => setCommandInput(e.target.value)}
+                    onKeyDown={handleTerminalKeyDown}
+                    disabled={executingCommand}
+                    placeholder={executingCommand ? 'Executing command...' : 'Type bash command (python, g++, gcc, ls, cd, ./...)'}
+                    style={{
+                      flex: 1,
+                      background: 'rgba(255, 255, 255, 0.06)',
+                      border: '1px solid rgba(56, 189, 248, 0.3)',
+                      borderRadius: 6,
+                      padding: '7px 12px',
+                      outline: 'none',
+                      color: '#38bdf8',
+                      fontWeight: 600,
+                      fontSize: 12,
+                      fontFamily: 'monospace',
+                    }}
+                  />
                   <button
                     onClick={() => runTerminalCommand()}
+                    disabled={executingCommand || !commandInput.trim()}
                     style={{
-                      background: 'transparent',
+                      background: '#38bdf8',
+                      color: '#000',
                       border: 'none',
-                      color: 'var(--text-muted)',
+                      borderRadius: 6,
+                      padding: '6px 14px',
+                      fontSize: 11,
+                      fontWeight: 800,
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
+                      gap: 5,
+                      flexShrink: 0,
+                      opacity: executingCommand || !commandInput.trim() ? 0.6 : 1,
                     }}
                   >
-                    <CornerDownLeft size={13} />
+                    <CornerDownLeft size={12} strokeWidth={2.5} />
+                    <span>RUN</span>
                   </button>
-                )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}

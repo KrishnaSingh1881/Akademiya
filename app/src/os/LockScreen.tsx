@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Zap, UserCheck, GraduationCap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useOSStore } from './store/useOSStore';
 import academiyaLogo from '../media/academiya.webp';
 
 export default function LockScreen() {
@@ -12,6 +13,13 @@ export default function LockScreen() {
   const [role, setRole] = useState<'teacher' | 'student'>('student');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Guarantee that whenever the lock screen is shown, no lingering windows remain
+    useOSStore.getState().closeAll();
+    // Trap browser back button so it stays on lock screen
+    window.history.replaceState({ screen: 'lock' }, '', '/');
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

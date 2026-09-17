@@ -17,6 +17,16 @@ export default function MenuBar({ isDebuggerOpen, onToggleDebugger, onOpenCreate
   const { theme, toggleTheme } = useTheme();
   const { windows, focusedWindowId, openWindow } = useOSStore();
   const [time, setTime] = useState('');
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
   const isLight = theme === 'light';
   const menuBarBg = isLight ? 'rgba(255, 255, 255, 0.88)' : 'rgba(10, 12, 20, 0.75)';
@@ -209,7 +219,8 @@ export default function MenuBar({ isDebuggerOpen, onToggleDebugger, onOpenCreate
         </button>
 
         <button
-          onClick={logout}
+          onClick={handleLogout}
+          disabled={loggingOut}
           style={{
             background: isLight ? 'rgba(239, 68, 68, 0.10)' : 'rgba(239, 68, 68, 0.15)',
             border: `1px solid ${isLight ? 'rgba(239, 68, 68, 0.25)' : 'rgba(239, 68, 68, 0.3)'}`,
@@ -227,7 +238,7 @@ export default function MenuBar({ isDebuggerOpen, onToggleDebugger, onOpenCreate
           }}
         >
           <LogOut size={12} strokeWidth={2} />
-          <span>Log Out</span>
+          <span>{loggingOut ? 'Signing out...' : 'Log Out'}</span>
         </button>
       </div>
     </div>

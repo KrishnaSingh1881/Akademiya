@@ -89,9 +89,12 @@ export default function AppWindow({ window: win, children }: AppWindowProps) {
         }}
       />
       <div
-        className="window-content custom-scrollbar"
+        className={`window-content custom-scrollbar window-content-${win.appType}`}
         style={{
           color: 'var(--text-primary)',
+          ...(win.appType === 'code-lab'
+            ? { padding: '10px 12px', overflow: 'hidden' }
+            : {}),
         }}
       >
         <WindowErrorBoundary>

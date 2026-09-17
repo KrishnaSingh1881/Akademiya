@@ -99,14 +99,24 @@ export const useOSStore = create<OSStore>((set, get) => ({
     const id = `${appType}_${Date.now()}`;
     const defaults = APP_DEFAULTS[appType] || { size: { width: 800, height: 600 }, position: { x: 80, y: 60 } };
 
-    // Cascade position slightly if multiple windows
-    const cascadeOffset = (windows.length % 5) * 20;
+    // Dynamically clamp to current screen viewport so no window opens offscreen
+    const screenW = typeof window !== 'undefined' ? window.innerWidth : 1200;
+    const screenH = typeof window !== 'undefined' ? window.innerHeight : 700;
+    const maxUsableW = Math.max(360, screenW - 32);
+    const maxUsableH = Math.max(260, screenH - 105);
+
+    const clampedW = Math.min(defaults.size.width, maxUsableW);
+    const clampedH = Math.min(defaults.size.height, maxUsableH);
+    const cascadeOffset = (windows.length % 5) * 15;
+    const clampedX = Math.max(8, Math.min(defaults.position.x + cascadeOffset, screenW - clampedW - 10));
+    const clampedY = Math.max(32, Math.min(defaults.position.y + cascadeOffset, screenH - clampedH - 75));
+
     const newWindow: WindowState = {
       id,
       appType,
       title: APP_TITLES[appType] || appType,
-      position: { x: defaults.position.x + cascadeOffset, y: defaults.position.y + cascadeOffset },
-      size: { ...defaults.size },
+      position: { x: clampedX, y: clampedY },
+      size: { width: clampedW, height: clampedH },
       isMinimized: false,
       isMaximized: false,
       zIndex: nextZIndex,

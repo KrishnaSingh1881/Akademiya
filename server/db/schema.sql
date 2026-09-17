@@ -235,6 +235,20 @@ CREATE INDEX IF NOT EXISTS idx_attendance_student ON attendance(student_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_session ON attendance(session_id);
 CREATE INDEX IF NOT EXISTS idx_topic_activity_student ON student_topic_activity(student_id);
 CREATE INDEX IF NOT EXISTS idx_topic_activity_struggle ON student_topic_activity(student_id, struggle_level);
+-- 14. user_sessions (Persistent credential & session management)
+CREATE TABLE IF NOT EXISTS user_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  session_token VARCHAR(500) UNIQUE NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  user_agent TEXT,
+  ip_address VARCHAR(100),
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  last_active_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  expires_at TIMESTAMPTZ NOT NULL
+);
 
-
+CREATE INDEX IF NOT EXISTS idx_user_sessions_token ON user_sessions(session_token);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_active ON user_sessions(is_active);
 
