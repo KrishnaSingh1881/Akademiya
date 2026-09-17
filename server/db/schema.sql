@@ -171,7 +171,7 @@ CREATE TABLE IF NOT EXISTS integrity_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   assessment_id UUID REFERENCES assessments(id) ON DELETE CASCADE,
   student_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  event_type VARCHAR(50) NOT NULL CHECK (event_type IN ('tab_switch', 'window_blur', 'fullscreen_exit', 'paste_attempt', 'copy_attempt', 'context_menu')),
+  event_type VARCHAR(50) NOT NULL CHECK (event_type IN ('tab_switch', 'window_blur', 'fullscreen_exit', 'paste_attempt', 'copy_attempt', 'context_menu', 'ctrl_c_attempt', 'ctrl_v_attempt', 'typing_anomaly', 'flag_threshold_exceeded')),
   metadata JSONB DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
