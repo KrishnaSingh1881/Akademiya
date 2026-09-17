@@ -1,2 +1,3 @@
 TestForge-main/
-.gitignore/
+.gitignore
+.env
