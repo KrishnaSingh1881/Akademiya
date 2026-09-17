@@ -18,6 +18,12 @@ export default function MenuBar({ isDebuggerOpen, onToggleDebugger, onOpenCreate
   const { windows, focusedWindowId, openWindow } = useOSStore();
   const [time, setTime] = useState('');
 
+  const isLight = theme === 'light';
+  const menuBarBg = isLight ? 'rgba(255, 255, 255, 0.88)' : 'rgba(10, 12, 20, 0.75)';
+  const menuBarBorder = isLight ? 'rgba(0, 0, 0, 0.08)' : 'var(--panel-border)';
+  const btnBg = isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.08)';
+  const btnBorder = isLight ? 'rgba(0, 0, 0, 0.12)' : 'var(--panel-border)';
+
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
@@ -46,9 +52,11 @@ export default function MenuBar({ isDebuggerOpen, onToggleDebugger, onOpenCreate
         left: 0,
         right: 0,
         height: 32,
-        background: 'rgba(10, 12, 20, 0.75)',
+        background: menuBarBg,
         backdropFilter: 'blur(16px)',
-        borderBottom: '1px solid var(--panel-border)',
+        WebkitBackdropFilter: 'blur(16px)',
+        borderBottom: `1px solid ${menuBarBorder}`,
+        boxShadow: isLight ? '0 1px 10px rgba(0, 0, 0, 0.05)' : 'none',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -59,6 +67,7 @@ export default function MenuBar({ isDebuggerOpen, onToggleDebugger, onOpenCreate
         color: 'var(--text-primary)',
         overflowX: 'auto',
         userSelect: 'none',
+        transition: 'background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease',
       }}
     >
       {/* Left */}
@@ -108,7 +117,9 @@ export default function MenuBar({ isDebuggerOpen, onToggleDebugger, onOpenCreate
             >
               {user.role}
             </span>
-            <span style={{ fontWeight: 600, fontSize: 11, whiteSpace: 'nowrap' }}>{user.name}</span>
+            <span style={{ fontWeight: 600, fontSize: 11, whiteSpace: 'nowrap', color: 'var(--text-primary)' }}>
+              {user.name}
+            </span>
           </div>
         )}
 
@@ -152,11 +163,13 @@ export default function MenuBar({ isDebuggerOpen, onToggleDebugger, onOpenCreate
         <button
           onClick={onToggleDebugger}
           style={{
-            background: isDebuggerOpen ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255, 255, 255, 0.08)',
-            border: `1px solid ${isDebuggerOpen ? '#38bdf8' : 'var(--panel-border)'}`,
+            background: isDebuggerOpen
+              ? (isLight ? 'rgba(14, 165, 233, 0.18)' : 'rgba(56, 189, 248, 0.25)')
+              : btnBg,
+            border: `1px solid ${isDebuggerOpen ? (isLight ? '#0284c7' : '#38bdf8') : btnBorder}`,
             borderRadius: 6,
             padding: '3px 8px',
-            color: isDebuggerOpen ? '#38bdf8' : 'var(--text-primary)',
+            color: isDebuggerOpen ? (isLight ? '#0284c7' : '#38bdf8') : 'var(--text-primary)',
             fontSize: 11,
             fontWeight: 600,
             cursor: 'pointer',
@@ -164,6 +177,7 @@ export default function MenuBar({ isDebuggerOpen, onToggleDebugger, onOpenCreate
             alignItems: 'center',
             gap: 4,
             flexShrink: 0,
+            transition: 'all 0.15s ease',
           }}
           title="Toggle Live Console & Terminal Debugger"
         >
@@ -174,32 +188,34 @@ export default function MenuBar({ isDebuggerOpen, onToggleDebugger, onOpenCreate
         <button
           onClick={toggleTheme}
           style={{
-            background: 'rgba(255, 255, 255, 0.08)',
-            border: '1px solid var(--panel-border)',
+            background: btnBg,
+            border: `1px solid ${btnBorder}`,
             borderRadius: 6,
             padding: '3px 8px',
             color: 'var(--text-primary)',
             fontSize: 11,
+            fontWeight: 500,
             cursor: 'pointer',
             display: 'inline-flex',
             alignItems: 'center',
             gap: 4,
             flexShrink: 0,
+            transition: 'all 0.15s ease',
           }}
           title="Toggle Theme"
         >
-          {theme === 'dark' ? <Sun size={12} strokeWidth={2} /> : <Moon size={12} strokeWidth={2} />}
-          <span>{theme === 'dark' ? 'Light' : 'Dark'}</span>
+          {isLight ? <Moon size={12} strokeWidth={2} /> : <Sun size={12} strokeWidth={2} />}
+          <span>{isLight ? 'Dark' : 'Light'}</span>
         </button>
 
         <button
           onClick={logout}
           style={{
-            background: 'rgba(239, 68, 68, 0.15)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
+            background: isLight ? 'rgba(239, 68, 68, 0.10)' : 'rgba(239, 68, 68, 0.15)',
+            border: `1px solid ${isLight ? 'rgba(239, 68, 68, 0.25)' : 'rgba(239, 68, 68, 0.3)'}`,
             borderRadius: 6,
             padding: '3px 8px',
-            color: '#f87171',
+            color: isLight ? '#dc2626' : '#f87171',
             fontSize: 11,
             fontWeight: 600,
             cursor: 'pointer',
@@ -207,6 +223,7 @@ export default function MenuBar({ isDebuggerOpen, onToggleDebugger, onOpenCreate
             alignItems: 'center',
             gap: 4,
             flexShrink: 0,
+            transition: 'all 0.15s ease',
           }}
         >
           <LogOut size={12} strokeWidth={2} />

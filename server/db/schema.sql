@@ -196,6 +196,32 @@ CREATE TABLE IF NOT EXISTS attendance (
   CONSTRAINT unique_student_session UNIQUE (student_id, session_id)
 );
 
+-- 18. student_topic_activity (Active webpage tracking & struggle intelligence)
+CREATE TABLE IF NOT EXISTS student_topic_activity (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  subject_id VARCHAR(100) NOT NULL,
+  subject_name VARCHAR(255) NOT NULL,
+  topic_id VARCHAR(100) NOT NULL,
+  topic_title VARCHAR(255) NOT NULL,
+  active_seconds INT NOT NULL DEFAULT 0,
+  total_seconds INT NOT NULL DEFAULT 0,
+  scroll_distance INT NOT NULL DEFAULT 0,
+  scroll_events_count INT NOT NULL DEFAULT 0,
+  scroll_reversals_count INT NOT NULL DEFAULT 0,
+  max_scroll_depth_pct NUMERIC(5, 2) NOT NULL DEFAULT 0.0,
+  idle_seconds INT NOT NULL DEFAULT 0,
+  rapid_scroll_detected BOOLEAN NOT NULL DEFAULT false,
+  is_considered_read BOOLEAN NOT NULL DEFAULT false,
+  struggle_score NUMERIC(5, 2) NOT NULL DEFAULT 0.0,
+  struggle_level VARCHAR(50) NOT NULL DEFAULT 'normal' CHECK (struggle_level IN ('normal', 'moderate_struggle', 'high_struggle')),
+  struggle_reason TEXT,
+  last_active_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT unique_student_topic UNIQUE (student_id, topic_id)
+);
+
 -- Helpful indexes for rapid deterministic querying
 CREATE INDEX IF NOT EXISTS idx_questions_concept ON questions(concept, subconcept);
 CREATE INDEX IF NOT EXISTS idx_attempts_student ON attempts(student_id, question_id);
@@ -207,5 +233,8 @@ CREATE INDEX IF NOT EXISTS idx_integrity_events_assess_student ON integrity_even
 CREATE INDEX IF NOT EXISTS idx_class_sessions_window ON class_sessions(start_time, end_time);
 CREATE INDEX IF NOT EXISTS idx_attendance_student ON attendance(student_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_session ON attendance(session_id);
+CREATE INDEX IF NOT EXISTS idx_topic_activity_student ON student_topic_activity(student_id);
+CREATE INDEX IF NOT EXISTS idx_topic_activity_struggle ON student_topic_activity(student_id, struggle_level);
+
 
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   BookOpen,
   Search,
@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { CS_CURRICULUM, CourseSubject, CourseModule, PracticeQuestion } from './learn/learnCoursesData';
 import LearnDiagrams from './learn/LearnDiagrams';
+import { useLearningTelemetry } from './learn/useLearningTelemetry';
 
 export default function LearnApp() {
   const [selectedYear, setSelectedYear] = useState<'All' | '1st Year' | '2nd Year' | '3rd Year'>('All');
@@ -56,6 +57,18 @@ export default function LearnApp() {
     const found = currentSubject.modules.find((m) => m.id === activeModuleId);
     return found || currentSubject.modules[0] || CS_CURRICULUM[0].modules[0];
   }, [currentSubject, activeModuleId]);
+
+  // Telemetry ref for tracking active reading, scroll metrics and idle state
+  const readerContainerRef = useRef<HTMLDivElement>(null);
+
+  useLearningTelemetry({
+    subjectId: currentSubject.id,
+    subjectName: currentSubject.subjectName,
+    moduleId: currentModule.id,
+    moduleTitle: currentModule.title,
+    readTimeStr: currentModule.readTime,
+    containerRef: readerContainerRef,
+  });
 
   const toggleModuleCompletion = (id: string) => {
     setCompletedModuleIds((prev) => {
@@ -325,6 +338,7 @@ export default function LearnApp() {
 
         {/* Right Main Stage: Course Topic Reader */}
         <div
+          ref={readerContainerRef}
           className="glass-panel custom-scrollbar"
           style={{
             borderRadius: 14,

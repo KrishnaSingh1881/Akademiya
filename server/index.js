@@ -16,6 +16,7 @@ import insightRoutes from './routes/insights.js';
 import semanticRoutes from './routes/semantic.js';
 import settingsRoutes from './routes/settings.js';
 import attendanceRoutes from './routes/attendance.js';
+import activityRoutes from './routes/activity.js';
 import { setupWebSocket } from './ws.js';
 
 dotenv.config();
@@ -64,6 +65,7 @@ app.use('/api/insights', insightRoutes);
 app.use('/api/semantic', semanticRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/attendance', attendanceRoutes);
+app.use('/api/activity', activityRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
