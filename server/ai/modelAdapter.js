@@ -14,16 +14,121 @@ import axios from 'axios';
 import { extractJSON } from '../lib/aiOutput.js';
 import { runLocally } from '../lib/localRunner.js';
 import { FALLBACK_QUESTIONS, FALLBACK_DIAGNOSTICS, FALLBACK_PLANS, buildFallbackDescriptive } from './fallbackPool.js';
+import { query } from '../db/index.js';
 
 const LMSTUDIO_BASE_URL = process.env.LMSTUDIO_BASE_URL || 'http://localhost:1234/v1';
-const LMSTUDIO_MODEL = process.env.LMSTUDIO_MODEL || 'gemma-3n-e4b';
+const LMSTUDIO_MODEL = process.env.LMSTUDIO_MODEL || 'google/gemma-4-e4b';
 const LMSTUDIO_EMBED_MODEL = process.env.LMSTUDIO_EMBED_MODEL || 'text-embedding-nomic-embed-text-v1.5';
-const LMSTUDIO_TIMEOUT_MS = Number(process.env.LMSTUDIO_TIMEOUT_MS) || 4000;
+const LMSTUDIO_TIMEOUT_MS = Number(process.env.LMSTUDIO_TIMEOUT_MS) || 8000;
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const GEMINI_EMBED_MODEL = process.env.GEMINI_EMBED_MODEL || 'gemini-embedding-001';
 const GEMINI_TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT_MS) || 9000;
+
+// Configurable active provider: 'lmstudio' | 'gemini'
+let activeProvider = process.env.ACTIVE_AI_PROVIDER || 'lmstudio';
+
+// Asynchronously load stored provider from system_settings if present
+async function loadPersistedProvider() {
+  try {
+    const res = await query("SELECT value FROM system_settings WHERE key = 'ai_provider'");
+    if (res.rows.length > 0 && res.rows[0].value?.provider) {
+      activeProvider = res.rows[0].value.provider;
+    }
+  } catch {
+    // Graceful fallback if database table not yet populated
+  }
+}
+loadPersistedProvider();
+
+export function getActiveProvider() {
+  return activeProvider;
+}
+
+export function setActiveProvider(provider) {
+  if (provider !== 'lmstudio' && provider !== 'gemini') {
+    throw new Error(`Invalid provider: ${provider}. Must be 'lmstudio' or 'gemini'.`);
+  }
+  activeProvider = provider;
+  return activeProvider;
+}
+
+export function getProvidersConfig() {
+  return {
+    activeProvider,
+    lmstudio: {
+      name: 'Gemma 4 E4B (LM Studio)',
+      baseUrl: LMSTUDIO_BASE_URL,
+      model: LMSTUDIO_MODEL,
+      embedModel: LMSTUDIO_EMBED_MODEL,
+      timeoutMs: LMSTUDIO_TIMEOUT_MS,
+      isLocal: true,
+    },
+    gemini: {
+      name: 'Google Gemini API',
+      model: GEMINI_MODEL,
+      embedModel: GEMINI_EMBED_MODEL,
+      timeoutMs: GEMINI_TIMEOUT_MS,
+      hasKey: Boolean(GEMINI_API_KEY),
+      isLocal: false,
+    }
+  };
+}
+
+export async function testProviderConnection(provider = activeProvider) {
+  const target = provider === 'gemini' ? 'gemini' : 'lmstudio';
+  const start = Date.now();
+  if (target === 'gemini') {
+    if (!GEMINI_API_KEY) {
+      return {
+        success: false,
+        provider: 'gemini',
+        model: GEMINI_MODEL,
+        error: 'GEMINI_API_KEY is not configured on server'
+      };
+    }
+    try {
+      await callGeminiChat('Respond with {"status":"ok"}', { json: true });
+      const latencyMs = Date.now() - start;
+      return {
+        success: true,
+        provider: 'gemini',
+        model: GEMINI_MODEL,
+        latencyMs,
+        message: `Connected successfully to ${GEMINI_MODEL} (${latencyMs}ms)`
+      };
+    } catch (err) {
+      return {
+        success: false,
+        provider: 'gemini',
+        model: GEMINI_MODEL,
+        latencyMs: Date.now() - start,
+        error: err.message
+      };
+    }
+  } else {
+    try {
+      await callLMStudioChat('Respond with {"status":"ok"}', { json: true });
+      const latencyMs = Date.now() - start;
+      return {
+        success: true,
+        provider: 'lmstudio',
+        model: LMSTUDIO_MODEL,
+        latencyMs,
+        message: `Connected successfully to LM Studio ${LMSTUDIO_MODEL} (${latencyMs}ms)`
+      };
+    } catch (err) {
+      return {
+        success: false,
+        provider: 'lmstudio',
+        model: LMSTUDIO_MODEL,
+        latencyMs: Date.now() - start,
+        error: `LM Studio not reachable at ${LMSTUDIO_BASE_URL}: ${err.message}`
+      };
+    }
+  }
+}
 
 export const BLOOM_LEVELS = ['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create'];
 
@@ -36,29 +141,67 @@ const BLOOM_GUIDANCE = {
   create: 'Design, compose, or propose a new solution/structure using the concept.'
 };
 
+const LMSTUDIO_CHAT_URL = process.env.LMSTUDIO_CHAT_URL || 'http://localhost:1234/api/v1/chat';
+const LM_API_TOKEN = process.env.LM_API_TOKEN || '';
+
 // ---------------------------------------------------------------------------
-// Low-level provider chain: LM Studio (local) -> Gemini (cloud)
+// Low-level provider calls: LM Studio (local) & Gemini (cloud)
 // ---------------------------------------------------------------------------
 
 async function callLMStudioChat(prompt, { json = true, temperature = 0.6, system = '' } = {}) {
-  const messages = [];
-  if (system) messages.push({ role: 'system', content: system });
-  messages.push({ role: 'user', content: prompt });
+  const headers = { 'Content-Type': 'application/json' };
+  if (LM_API_TOKEN) {
+    headers['Authorization'] = `Bearer ${LM_API_TOKEN}`;
+  }
 
-  const res = await axios.post(
-    `${LMSTUDIO_BASE_URL}/chat/completions`,
-    {
-      model: LMSTUDIO_MODEL,
-      messages,
-      temperature,
-      ...(json ? { response_format: { type: 'json_object' } } : {})
-    },
-    { timeout: LMSTUDIO_TIMEOUT_MS }
-  );
+  const fullPrompt = system ? `${system}\n\n${prompt}` : prompt;
 
-  const content = res.data?.choices?.[0]?.message?.content;
-  if (!content) throw new Error('LM Studio returned an empty response');
-  return content;
+  try {
+    // Primary: LM Studio native v1 API format (http://localhost:1234/api/v1/chat)
+    const res = await axios.post(
+      LMSTUDIO_CHAT_URL,
+      {
+        model: LMSTUDIO_MODEL,
+        input: fullPrompt,
+        temperature,
+        context_length: 8000
+      },
+      { headers, timeout: LMSTUDIO_TIMEOUT_MS }
+    );
+
+    const outputList = res.data?.output;
+    if (Array.isArray(outputList) && outputList.length > 0) {
+      const msgObj = outputList.find(item => item.type === 'message') || outputList[0];
+      if (msgObj?.content) return msgObj.content;
+    }
+    if (res.data?.choices?.[0]?.message?.content) {
+      return res.data.choices[0].message.content;
+    }
+  } catch (apiErr) {
+    // Fallback: OpenAI-compatible completions format
+    try {
+      const messages = [];
+      if (system) messages.push({ role: 'system', content: system });
+      messages.push({ role: 'user', content: prompt });
+
+      const res = await axios.post(
+        `${LMSTUDIO_BASE_URL}/chat/completions`,
+        {
+          model: LMSTUDIO_MODEL,
+          messages,
+          temperature
+        },
+        { headers, timeout: LMSTUDIO_TIMEOUT_MS }
+      );
+
+      const content = res.data?.choices?.[0]?.message?.content;
+      if (content) return content;
+    } catch (fallbackErr) {
+      throw new Error(`LM Studio error: ${apiErr.message}`);
+    }
+  }
+
+  throw new Error('LM Studio returned an empty response');
 }
 
 async function callGeminiChat(prompt, { json = true, temperature = 0.6, system = '' } = {}) {
@@ -83,18 +226,30 @@ async function callGeminiChat(prompt, { json = true, temperature = 0.6, system =
 }
 
 /**
- * Bounded provider chain used by every generation/grading capability below.
- * Never throws silently — the caller is expected to catch and apply its own
- * deterministic fallback so a provider outage never blocks the product loop.
+ * Bounded provider chain that respects the activeProvider chosen by the user/teacher.
+ * Automatically tries the active provider first, and falls back to the alternate
+ * before throwing to the offline curated fallback pool.
  */
 async function chatComplete(prompt, opts = {}) {
-  try {
-    return await callLMStudioChat(prompt, opts);
-  } catch (lmErr) {
+  if (activeProvider === 'gemini') {
     try {
       return await callGeminiChat(prompt, opts);
     } catch (geminiErr) {
-      throw new Error(`All AI providers failed. LM Studio: ${lmErr.message}. Gemini: ${geminiErr.message}`);
+      try {
+        return await callLMStudioChat(prompt, opts);
+      } catch (lmErr) {
+        throw new Error(`All AI providers failed. Gemini: ${geminiErr.message}. LM Studio: ${lmErr.message}`);
+      }
+    }
+  } else {
+    try {
+      return await callLMStudioChat(prompt, opts);
+    } catch (lmErr) {
+      try {
+        return await callGeminiChat(prompt, opts);
+      } catch (geminiErr) {
+        throw new Error(`All AI providers failed. LM Studio: ${lmErr.message}. Gemini: ${geminiErr.message}`);
+      }
     }
   }
 }
@@ -516,14 +671,27 @@ Never return just a number or score.`;
 }
 
 export async function generateEmbedding(text) {
-  try {
-    return normalizeToVectorLength(await callLMStudioEmbedding(text));
-  } catch (lmErr) {
+  if (activeProvider === 'gemini') {
     try {
       return normalizeToVectorLength(await callGeminiEmbedding(text));
     } catch (geminiErr) {
-      console.warn(`[ModelAdapter] Embedding providers unavailable (LM Studio: ${lmErr.message}, Gemini: ${geminiErr.message}). Using deterministic fallback vector.`);
-      return deterministicFallbackEmbedding(text);
+      try {
+        return normalizeToVectorLength(await callLMStudioEmbedding(text));
+      } catch (lmErr) {
+        console.warn(`[ModelAdapter] Embedding providers unavailable (Gemini: ${geminiErr.message}, LM Studio: ${lmErr.message}). Using deterministic fallback vector.`);
+        return deterministicFallbackEmbedding(text);
+      }
+    }
+  } else {
+    try {
+      return normalizeToVectorLength(await callLMStudioEmbedding(text));
+    } catch (lmErr) {
+      try {
+        return normalizeToVectorLength(await callGeminiEmbedding(text));
+      } catch (geminiErr) {
+        console.warn(`[ModelAdapter] Embedding providers unavailable (LM Studio: ${lmErr.message}, Gemini: ${geminiErr.message}). Using deterministic fallback vector.`);
+        return deterministicFallbackEmbedding(text);
+      }
     }
   }
 }

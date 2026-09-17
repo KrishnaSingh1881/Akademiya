@@ -1,9 +1,44 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
-import { Sun, Moon, Check, Upload, Image as ImageIcon, RotateCcw, Link as LinkIcon } from 'lucide-react';
+import {
+  Sun,
+  Moon,
+  Check,
+  Upload,
+  Image as ImageIcon,
+  RotateCcw,
+  Link as LinkIcon,
+  Cpu,
+  Server,
+  Cloud,
+  CheckCircle,
+  AlertCircle,
+  RefreshCw,
+  Zap
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useOSSettings, WALLPAPER_PRESETS, type FontSize } from '../os/store/useOSSettings';
+
+interface AIProviderConfig {
+  activeProvider: 'lmstudio' | 'gemini';
+  lmstudio: {
+    name: string;
+    baseUrl: string;
+    model: string;
+    embedModel: string;
+    timeoutMs: number;
+    isLocal: boolean;
+  };
+  gemini: {
+    name: string;
+    model: string;
+    embedModel: string;
+    timeoutMs: number;
+    hasKey: boolean;
+    isLocal: boolean;
+  };
+}
 
 export default function SettingsApp() {
   const { user } = useAuth();
@@ -14,11 +49,77 @@ export default function SettingsApp() {
   const [customUrlInput, setCustomUrlInput] = useState('');
   const [uploadError, setUploadError] = useState<string | null>(null);
 
+  // AI Provider State
+  const [aiConfig, setAiConfig] = useState<AIProviderConfig | null>(null);
+  const [selectedProvider, setSelectedProvider] = useState<'lmstudio' | 'gemini'>('lmstudio');
+  const [savingProvider, setSavingProvider] = useState(false);
+  const [providerSaved, setProviderSaved] = useState(false);
+  const [testingProvider, setTestingProvider] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<{
+    provider: string;
+    success: boolean;
+    message?: string;
+    latencyMs?: number;
+    error?: string;
+  } | null>(null);
+
   useEffect(() => {
     if (user) {
       setName(user.name);
     }
   }, [user]);
+
+  // Load AI provider config from backend
+  useEffect(() => {
+    const fetchAIConfig = async () => {
+      try {
+        const res = await axios.get('/api/settings/ai-provider');
+        if (res.data?.config) {
+          setAiConfig(res.data.config);
+          setSelectedProvider(res.data.config.activeProvider);
+        }
+      } catch (err) {
+        console.error('Failed to load AI provider config:', err);
+      }
+    };
+    fetchAIConfig();
+  }, []);
+
+  const handleSelectProvider = async (provider: 'lmstudio' | 'gemini') => {
+    setSelectedProvider(provider);
+    setSavingProvider(true);
+    try {
+      const res = await axios.put('/api/settings/ai-provider', { provider });
+      if (res.data?.config) {
+        setAiConfig(res.data.config);
+        setSelectedProvider(res.data.config.activeProvider);
+      }
+      setProviderSaved(true);
+      setTimeout(() => setProviderSaved(false), 2500);
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to update AI provider');
+    } finally {
+      setSavingProvider(false);
+    }
+  };
+
+  const handleTestConnection = async (e: React.MouseEvent, provider: 'lmstudio' | 'gemini') => {
+    e.stopPropagation();
+    setTestingProvider(provider);
+    setTestResult(null);
+    try {
+      const res = await axios.post('/api/settings/ai-provider/test', { provider });
+      setTestResult(res.data);
+    } catch (err: any) {
+      setTestResult({
+        provider,
+        success: false,
+        error: err.response?.data?.error || err.message,
+      });
+    } finally {
+      setTestingProvider(null);
+    }
+  };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,7 +203,7 @@ export default function SettingsApp() {
   }, [wallpaper]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 560, margin: '0 auto', overflowY: 'auto', paddingBottom: 20 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 560, width: '100%', margin: '0 auto', paddingBottom: 24 }}>
       <div>
         <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>System Settings</h2>
         <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
@@ -166,6 +267,180 @@ export default function SettingsApp() {
             )}
           </div>
         </form>
+      </div>
+
+      {/* AI Model Engine Configuration */}
+      <div className="glass-panel" style={{ borderRadius: 14, padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Cpu size={18} color="var(--accent-light, #38bdf8)" />
+              <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>AI Intelligence Engine</h3>
+            </div>
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '3px 0 0 0' }}>
+              Choose your active AI inference model for diagnostic probes, question generation, and pedagogical plans.
+            </p>
+          </div>
+          {providerSaved && (
+            <span style={{ fontSize: 11, color: '#34d399', display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(52, 211, 153, 0.1)', padding: '3px 8px', borderRadius: 6, border: '1px solid rgba(52, 211, 153, 0.25)' }}>
+              <Check size={12} /> Active Provider Saved
+            </span>
+          )}
+        </div>
+
+        {/* Provider Cards Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 12 }}>
+          {/* LM Studio Card (Gemma 4 E4B) */}
+          <div
+            onClick={() => handleSelectProvider('lmstudio')}
+            style={{
+              padding: 14,
+              borderRadius: 10,
+              cursor: 'pointer',
+              border: selectedProvider === 'lmstudio' ? '2px solid #38bdf8' : '1px solid var(--panel-border)',
+              background: selectedProvider === 'lmstudio' ? 'rgba(56, 189, 248, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+              boxShadow: selectedProvider === 'lmstudio' ? '0 0 16px rgba(56, 189, 248, 0.15)' : 'none',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              gap: 12,
+              transition: 'all 0.2s ease',
+              position: 'relative'
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Server size={15} color="#38bdf8" />
+                  <span style={{ fontSize: 13, fontWeight: 700 }}>Gemma 4 E4B</span>
+                </div>
+                {selectedProvider === 'lmstudio' ? (
+                  <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: '#38bdf8', color: '#090d16' }}>
+                    Active
+                  </span>
+                ) : (
+                  <span style={{ fontSize: 10, color: 'var(--text-muted)', border: '1px solid var(--panel-border)', padding: '1px 6px', borderRadius: 10 }}>
+                    Select
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                Host-local on-premise inference via LM Studio. 100% private with zero cloud API latency or quotas.
+              </div>
+              <div style={{ marginTop: 8, fontSize: 10, fontFamily: 'monospace', color: 'var(--text-muted)' }}>
+                📍 {aiConfig?.lmstudio?.baseUrl || 'http://localhost:1234/v1'}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 6, borderTop: '1px solid var(--panel-border)' }}>
+              <span style={{ fontSize: 10, color: '#38bdf8', fontWeight: 600 }}>
+                {aiConfig?.lmstudio?.model || 'google/gemma-4-e4b'}
+              </span>
+              <button
+                type="button"
+                onClick={(e) => handleTestConnection(e, 'lmstudio')}
+                disabled={testingProvider === 'lmstudio'}
+                className="btn-secondary"
+                style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              >
+                {testingProvider === 'lmstudio' ? <RefreshCw size={10} className="spin" /> : <Zap size={10} />}
+                Test Ping
+              </button>
+            </div>
+          </div>
+
+          {/* Gemini API Card */}
+          <div
+            onClick={() => handleSelectProvider('gemini')}
+            style={{
+              padding: 14,
+              borderRadius: 10,
+              cursor: 'pointer',
+              border: selectedProvider === 'gemini' ? '2px solid #a855f7' : '1px solid var(--panel-border)',
+              background: selectedProvider === 'gemini' ? 'rgba(168, 85, 247, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+              boxShadow: selectedProvider === 'gemini' ? '0 0 16px rgba(168, 85, 247, 0.15)' : 'none',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              gap: 12,
+              transition: 'all 0.2s ease',
+              position: 'relative'
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Cloud size={15} color="#a855f7" />
+                  <span style={{ fontSize: 13, fontWeight: 700 }}>Google Gemini API</span>
+                </div>
+                {selectedProvider === 'gemini' ? (
+                  <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: '#a855f7', color: '#ffffff' }}>
+                    Active
+                  </span>
+                ) : (
+                  <span style={{ fontSize: 10, color: 'var(--text-muted)', border: '1px solid var(--panel-border)', padding: '1px 6px', borderRadius: 10 }}>
+                    Select
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                Cloud generation with high throughput and extensive context reasoning via Google Generative Language.
+              </div>
+              <div style={{ marginTop: 8, fontSize: 10, fontFamily: 'monospace', color: 'var(--text-muted)' }}>
+                🔑 {aiConfig?.gemini?.hasKey ? 'Configured (API Key Active)' : 'No API Key Set'}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 6, borderTop: '1px solid var(--panel-border)' }}>
+              <span style={{ fontSize: 10, color: '#a855f7', fontWeight: 600 }}>
+                {aiConfig?.gemini?.model || 'gemini-2.5-flash'}
+              </span>
+              <button
+                type="button"
+                onClick={(e) => handleTestConnection(e, 'gemini')}
+                disabled={testingProvider === 'gemini'}
+                className="btn-secondary"
+                style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              >
+                {testingProvider === 'gemini' ? <RefreshCw size={10} className="spin" /> : <Zap size={10} />}
+                Test Ping
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Live Test Feedback Banner */}
+        {testResult && (
+          <div
+            style={{
+              padding: '9px 12px',
+              borderRadius: 8,
+              fontSize: 11,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              background: testResult.success ? 'rgba(52, 211, 153, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+              border: `1px solid ${testResult.success ? 'rgba(52, 211, 153, 0.25)' : 'rgba(239, 68, 68, 0.25)'}`,
+              color: testResult.success ? '#34d399' : '#f87171',
+            }}
+          >
+            {testResult.success ? (
+              <>
+                <CheckCircle size={14} style={{ flexShrink: 0 }} />
+                <span>
+                  <strong>{testResult.provider === 'gemini' ? 'Gemini API' : 'LM Studio'}:</strong> {testResult.message || `Operational (${testResult.latencyMs}ms latency)`}
+                </span>
+              </>
+            ) : (
+              <>
+                <AlertCircle size={14} style={{ flexShrink: 0 }} />
+                <span>
+                  <strong>{testResult.provider === 'gemini' ? 'Gemini API' : 'LM Studio'}:</strong> {testResult.error || 'Connection failed'}
+                </span>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Desktop Wallpaper Settings */}

@@ -290,3 +290,9 @@ CREATE INDEX IF NOT EXISTS idx_user_sessions_token ON user_sessions(session_toke
 CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_sessions_active ON user_sessions(is_active);
 
+-- 15. system_settings (System-wide configuration such as active AI provider)
+CREATE TABLE IF NOT EXISTS system_settings (
+  key VARCHAR(100) PRIMARY KEY,
+  value JSONB NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);

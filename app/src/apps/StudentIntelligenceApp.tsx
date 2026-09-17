@@ -70,7 +70,7 @@ export default function StudentIntelligenceApp() {
   const topics = activityData?.topics || [];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%', overflowY: 'auto' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', paddingBottom: 24 }}>
       {/* Top Bar */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--panel-border)', paddingBottom: 12, flexWrap: 'wrap', gap: 12 }}>
         <div>
@@ -468,7 +468,7 @@ export default function StudentIntelligenceApp() {
             No active learning gaps detected for {selectedStudent?.name || 'this student'}.
           </div>
         ) : (
-          <div className="stagger-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto' }}>
+          <div className="stagger-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {gaps.map((gap) => (
               <div
                 key={gap.id}

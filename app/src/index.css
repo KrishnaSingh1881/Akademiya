@@ -154,14 +154,16 @@ html, body, #root {
 .window-content {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1 1 0%;
   min-height: 0;
-  height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 18px 20px;
   user-select: text;
   box-sizing: border-box;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
 }
 
 .custom-scrollbar {
@@ -188,15 +190,28 @@ html, body, #root {
   background: rgba(56, 189, 248, 0.6);
 }
 
-/* ── Global Font Scaling ── */
+/* ── Global Font Scaling & Fullscreen Canvas ── */
 html {
   font-size: 16px;
   transition: font-size 0.2s ease;
+  background: var(--bg-desktop);
+  background-attachment: fixed;
+  background-size: cover;
+  background-position: center;
 }
 
 html[data-font-scale="small"] {
   font-size: 14px;
   zoom: 0.9;
+}
+
+html[data-font-scale="small"] body,
+html[data-font-scale="small"] #root,
+html[data-font-scale="small"] .desktop-container {
+  width: calc(100vw / 0.9) !important;
+  height: calc(100vh / 0.9) !important;
+  min-width: calc(100vw / 0.9) !important;
+  min-height: calc(100vh / 0.9) !important;
 }
 
 html[data-font-scale="medium"] {
@@ -207,6 +222,15 @@ html[data-font-scale="medium"] {
 html[data-font-scale="large"] {
   font-size: 18px;
   zoom: 1.12;
+}
+
+html[data-font-scale="large"] body,
+html[data-font-scale="large"] #root,
+html[data-font-scale="large"] .desktop-container {
+  width: calc(100vw / 1.12) !important;
+  height: calc(100vh / 1.12) !important;
+  min-width: calc(100vw / 1.12) !important;
+  min-height: calc(100vh / 1.12) !important;
 }
 
 /* ── Windows Window Controls ([-] [o] [x] at top right) ── */
@@ -669,8 +693,11 @@ html[data-font-scale="large"] {
 .window-pop-inner {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1 1 0%;
   min-height: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
   animation: windowContentPopIn 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
