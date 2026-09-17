@@ -52,12 +52,15 @@ router.get('/ai-provider', requireAuth, async (req, res) => {
 router.put('/ai-provider', requireAuth, async (req, res) => {
   try {
     const { provider } = req.body;
-    if (provider !== 'lmstudio' && provider !== 'gemini') {
-      return res.status(400).json({ error: "Invalid provider. Must be 'lmstudio' or 'gemini'." });
+    const validProviders = ['llama', 'qwen', 'gemini', 'lmstudio'];
+    if (!validProviders.includes(provider)) {
+      return res.status(400).json({ error: "Invalid provider. Must be 'llama', 'qwen', or 'gemini'." });
     }
 
+    const normalized = provider === 'lmstudio' ? 'llama' : provider;
+
     // Update in-process adapter
-    setActiveProvider(provider);
+    setActiveProvider(normalized);
 
     // Persist to PostgreSQL system_settings table
     await query(
@@ -65,13 +68,19 @@ router.put('/ai-provider', requireAuth, async (req, res) => {
        VALUES ('ai_provider', $1::jsonb, CURRENT_TIMESTAMP)
        ON CONFLICT (key) DO UPDATE
        SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP`,
-      [JSON.stringify({ provider, updatedBy: req.user.id })]
+      [JSON.stringify({ provider: normalized, updatedBy: req.user.id })]
     );
 
     const config = getProvidersConfig();
+    const providerNames = {
+      llama: 'Llama 3.2 3B Instruct (LM Studio)',
+      qwen: 'Qwen 2.5 Coder 7B (LM Studio)',
+      gemini: 'Google Gemini API'
+    };
+
     return res.json({
       success: true,
-      message: `Active AI provider set to ${provider === 'gemini' ? 'Google Gemini API' : 'Gemma 4 E4B (LM Studio)'}`,
+      message: `Active AI provider set to ${providerNames[normalized] || normalized}`,
       config
     });
   } catch (err) {
@@ -83,7 +92,7 @@ router.put('/ai-provider', requireAuth, async (req, res) => {
 router.post('/ai-provider/test', requireAuth, async (req, res) => {
   try {
     const { provider } = req.body;
-    const targetProvider = provider === 'gemini' ? 'gemini' : (provider === 'lmstudio' ? 'lmstudio' : getActiveProvider());
+    const targetProvider = provider || getActiveProvider();
     const result = await testProviderConnection(targetProvider);
     return res.json(result);
   } catch (err) {

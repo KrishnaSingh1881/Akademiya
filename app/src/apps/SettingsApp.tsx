@@ -10,6 +10,7 @@ import {
   Link as LinkIcon,
   Cpu,
   Server,
+  Code2,
   Cloud,
   CheckCircle,
   AlertCircle,
@@ -20,22 +21,44 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useOSSettings, WALLPAPER_PRESETS, type FontSize } from '../os/store/useOSSettings';
 
+type AIProviderType = 'llama' | 'qwen' | 'gemini' | 'lmstudio';
+
 interface AIProviderConfig {
-  activeProvider: 'lmstudio' | 'gemini';
-  lmstudio: {
+  activeProvider: AIProviderType;
+  llama?: {
+    id: string;
+    name: string;
+    model: string;
+    baseUrl: string;
+    timeoutMs: number;
+    isLocal: boolean;
+    description: string;
+  };
+  qwen?: {
+    id: string;
+    name: string;
+    model: string;
+    baseUrl: string;
+    timeoutMs: number;
+    isLocal: boolean;
+    description: string;
+  };
+  gemini?: {
+    id: string;
+    name: string;
+    model: string;
+    embedModel?: string;
+    timeoutMs: number;
+    hasKey: boolean;
+    isLocal: boolean;
+    description: string;
+  };
+  lmstudio?: {
     name: string;
     baseUrl: string;
     model: string;
     embedModel: string;
     timeoutMs: number;
-    isLocal: boolean;
-  };
-  gemini: {
-    name: string;
-    model: string;
-    embedModel: string;
-    timeoutMs: number;
-    hasKey: boolean;
     isLocal: boolean;
   };
 }
@@ -51,7 +74,7 @@ export default function SettingsApp() {
 
   // AI Provider State
   const [aiConfig, setAiConfig] = useState<AIProviderConfig | null>(null);
-  const [selectedProvider, setSelectedProvider] = useState<'lmstudio' | 'gemini'>('lmstudio');
+  const [selectedProvider, setSelectedProvider] = useState<AIProviderType>('llama');
   const [savingProvider, setSavingProvider] = useState(false);
   const [providerSaved, setProviderSaved] = useState(false);
   const [testingProvider, setTestingProvider] = useState<string | null>(null);
@@ -76,7 +99,8 @@ export default function SettingsApp() {
         const res = await axios.get('/api/settings/ai-provider');
         if (res.data?.config) {
           setAiConfig(res.data.config);
-          setSelectedProvider(res.data.config.activeProvider);
+          const active = res.data.config.activeProvider;
+          setSelectedProvider(active === 'lmstudio' ? 'llama' : active);
         }
       } catch (err) {
         console.error('Failed to load AI provider config:', err);
@@ -85,14 +109,15 @@ export default function SettingsApp() {
     fetchAIConfig();
   }, []);
 
-  const handleSelectProvider = async (provider: 'lmstudio' | 'gemini') => {
+  const handleSelectProvider = async (provider: AIProviderType) => {
     setSelectedProvider(provider);
     setSavingProvider(true);
     try {
       const res = await axios.put('/api/settings/ai-provider', { provider });
       if (res.data?.config) {
         setAiConfig(res.data.config);
-        setSelectedProvider(res.data.config.activeProvider);
+        const active = res.data.config.activeProvider;
+        setSelectedProvider(active === 'lmstudio' ? 'llama' : active);
       }
       setProviderSaved(true);
       setTimeout(() => setProviderSaved(false), 2500);
@@ -103,7 +128,7 @@ export default function SettingsApp() {
     }
   };
 
-  const handleTestConnection = async (e: React.MouseEvent, provider: 'lmstudio' | 'gemini') => {
+  const handleTestConnection = async (e: React.MouseEvent, provider: AIProviderType) => {
     e.stopPropagation();
     setTestingProvider(provider);
     setTestResult(null);
@@ -290,16 +315,16 @@ export default function SettingsApp() {
 
         {/* Provider Cards Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 12 }}>
-          {/* LM Studio Card (Gemma 4 E4B) */}
+          {/* Llama 3.2 3B Instruct Card */}
           <div
-            onClick={() => handleSelectProvider('lmstudio')}
+            onClick={() => handleSelectProvider('llama')}
             style={{
               padding: 14,
               borderRadius: 10,
               cursor: 'pointer',
-              border: selectedProvider === 'lmstudio' ? '2px solid #38bdf8' : '1px solid var(--panel-border)',
-              background: selectedProvider === 'lmstudio' ? 'rgba(56, 189, 248, 0.08)' : 'rgba(255, 255, 255, 0.02)',
-              boxShadow: selectedProvider === 'lmstudio' ? '0 0 16px rgba(56, 189, 248, 0.15)' : 'none',
+              border: (selectedProvider === 'llama' || selectedProvider === 'lmstudio') ? '2px solid #38bdf8' : '1px solid var(--panel-border)',
+              background: (selectedProvider === 'llama' || selectedProvider === 'lmstudio') ? 'rgba(56, 189, 248, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+              boxShadow: (selectedProvider === 'llama' || selectedProvider === 'lmstudio') ? '0 0 16px rgba(56, 189, 248, 0.15)' : 'none',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'space-between',
@@ -312,9 +337,9 @@ export default function SettingsApp() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <Server size={15} color="#38bdf8" />
-                  <span style={{ fontSize: 13, fontWeight: 700 }}>Gemma 4 E4B</span>
+                  <span style={{ fontSize: 13, fontWeight: 700 }}>Llama 3.2 3B</span>
                 </div>
-                {selectedProvider === 'lmstudio' ? (
+                {(selectedProvider === 'llama' || selectedProvider === 'lmstudio') ? (
                   <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: '#38bdf8', color: '#090d16' }}>
                     Active
                   </span>
@@ -325,25 +350,84 @@ export default function SettingsApp() {
                 )}
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                Host-local on-premise inference via LM Studio. 100% private with zero cloud API latency or quotas.
+                Fast on-premise local model via LM Studio. Ultra-lightweight (2GB VRAM) for quick diagnostic questions and MCQs.
               </div>
               <div style={{ marginTop: 8, fontSize: 10, fontFamily: 'monospace', color: 'var(--text-muted)' }}>
-                📍 {aiConfig?.lmstudio?.baseUrl || 'http://localhost:1234/v1'}
+                📍 {aiConfig?.llama?.baseUrl || 'http://localhost:1234/v1'}
               </div>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 6, borderTop: '1px solid var(--panel-border)' }}>
               <span style={{ fontSize: 10, color: '#38bdf8', fontWeight: 600 }}>
-                {aiConfig?.lmstudio?.model || 'google/gemma-4-e4b'}
+                {aiConfig?.llama?.model || 'llama-3.2-3b-instruct'}
               </span>
               <button
                 type="button"
-                onClick={(e) => handleTestConnection(e, 'lmstudio')}
-                disabled={testingProvider === 'lmstudio'}
+                onClick={(e) => handleTestConnection(e, 'llama')}
+                disabled={testingProvider === 'llama'}
                 className="btn-secondary"
                 style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}
               >
-                {testingProvider === 'lmstudio' ? <RefreshCw size={10} className="spin" /> : <Zap size={10} />}
+                {testingProvider === 'llama' ? <RefreshCw size={10} className="spin" /> : <Zap size={10} />}
+                Test Ping
+              </button>
+            </div>
+          </div>
+
+          {/* Qwen 2.5 Coder 7B Card */}
+          <div
+            onClick={() => handleSelectProvider('qwen')}
+            style={{
+              padding: 14,
+              borderRadius: 10,
+              cursor: 'pointer',
+              border: selectedProvider === 'qwen' ? '2px solid #10b981' : '1px solid var(--panel-border)',
+              background: selectedProvider === 'qwen' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+              boxShadow: selectedProvider === 'qwen' ? '0 0 16px rgba(16, 185, 129, 0.15)' : 'none',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              gap: 12,
+              transition: 'all 0.2s ease',
+              position: 'relative'
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Code2 size={15} color="#10b981" />
+                  <span style={{ fontSize: 13, fontWeight: 700 }}>Qwen 2.5 Coder</span>
+                </div>
+                {selectedProvider === 'qwen' ? (
+                  <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: '#10b981', color: '#090d16' }}>
+                    Active
+                  </span>
+                ) : (
+                  <span style={{ fontSize: 10, color: 'var(--text-muted)', border: '1px solid var(--panel-border)', padding: '1px 6px', borderRadius: 10 }}>
+                    Select
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                Specialized coding intelligence via LM Studio. Gold standard for Code Lab challenges, Python stubs & test cases.
+              </div>
+              <div style={{ marginTop: 8, fontSize: 10, fontFamily: 'monospace', color: 'var(--text-muted)' }}>
+                📍 {aiConfig?.qwen?.baseUrl || 'http://localhost:1234/v1'}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 6, borderTop: '1px solid var(--panel-border)' }}>
+              <span style={{ fontSize: 10, color: '#10b981', fontWeight: 600 }}>
+                {aiConfig?.qwen?.model || 'qwen2.5-coder-7b-instruct'}
+              </span>
+              <button
+                type="button"
+                onClick={(e) => handleTestConnection(e, 'qwen')}
+                disabled={testingProvider === 'qwen'}
+                className="btn-secondary"
+                style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              >
+                {testingProvider === 'qwen' ? <RefreshCw size={10} className="spin" /> : <Zap size={10} />}
                 Test Ping
               </button>
             </div>

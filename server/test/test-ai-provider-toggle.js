@@ -26,13 +26,25 @@ async function run() {
   const testGemini = await axios.post(`${BASE_URL}/api/settings/ai-provider/test`, { provider: 'gemini' }, { headers });
   console.log('✓ Test Gemini Connection Result:', testGemini.data);
 
-  // 5. Switch to LM Studio
-  const setLMStudioRes = await axios.put(`${BASE_URL}/api/settings/ai-provider`, { provider: 'lmstudio' }, { headers });
-  console.log('✓ Switched to LM Studio:', setLMStudioRes.data.config.activeProvider === 'lmstudio' ? 'PASS' : 'FAIL');
+  // 5. Switch to Llama
+  const setLlamaRes = await axios.put(`${BASE_URL}/api/settings/ai-provider`, { provider: 'llama' }, { headers });
+  console.log('✓ Switched to Llama 3.2:', setLlamaRes.data.config.activeProvider === 'llama' ? 'PASS' : 'FAIL');
 
-  // 6. Test LM Studio connection
-  const testLMStudio = await axios.post(`${BASE_URL}/api/settings/ai-provider/test`, { provider: 'lmstudio' }, { headers });
-  console.log('✓ Test LM Studio Connection Result:', testLMStudio.data);
+  // 6. Test Llama connection
+  const testLlama = await axios.post(`${BASE_URL}/api/settings/ai-provider/test`, { provider: 'llama' }, { headers });
+  console.log('✓ Test Llama Connection Result:', testLlama.data);
+
+  // 7. Switch to Qwen
+  const setQwenRes = await axios.put(`${BASE_URL}/api/settings/ai-provider`, { provider: 'qwen' }, { headers });
+  console.log('✓ Switched to Qwen 2.5:', setQwenRes.data.config.activeProvider === 'qwen' ? 'PASS' : 'FAIL');
+
+  // 8. Test Qwen connection
+  const testQwen = await axios.post(`${BASE_URL}/api/settings/ai-provider/test`, { provider: 'qwen' }, { headers });
+  console.log('✓ Test Qwen Connection Result:', testQwen.data);
+
+  // 9. Switch back to Llama as active default
+  await axios.put(`${BASE_URL}/api/settings/ai-provider`, { provider: 'llama' }, { headers });
+  console.log('✓ Restored active provider to Llama 3.2');
 
   console.log('\n🎉 ALL AI PROVIDER TOGGLE TESTS PASSED SUCCESSFULLY!');
 }

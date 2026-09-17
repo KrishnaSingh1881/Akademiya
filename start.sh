@@ -85,7 +85,7 @@ if [ ! -d "node_modules" ]; then
   npm install
 fi
 
-node index.js &
+node --watch index.js &
 BACKEND_PID=$!
 echo -e "${GREEN}  ✓ Backend started (PID: ${BACKEND_PID}) at http://localhost:5000${NC}"
 

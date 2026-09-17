@@ -13,28 +13,38 @@
 import axios from 'axios';
 import { extractJSON } from '../lib/aiOutput.js';
 import { runLocally } from '../lib/localRunner.js';
-import { FALLBACK_QUESTIONS, FALLBACK_DIAGNOSTICS, FALLBACK_PLANS, buildFallbackDescriptive } from './fallbackPool.js';
+import { FALLBACK_QUESTIONS, FALLBACK_DIAGNOSTICS, FALLBACK_PLANS, buildFallbackDescriptive, buildFallbackChallenge, FALLBACK_CHALLENGES } from './fallbackPool.js';
+export { buildFallbackChallenge, FALLBACK_CHALLENGES };
 import { query } from '../db/index.js';
 
 const LMSTUDIO_BASE_URL = process.env.LMSTUDIO_BASE_URL || 'http://localhost:1234/v1';
-const LMSTUDIO_MODEL = process.env.LMSTUDIO_MODEL || 'google/gemma-4-e4b';
+const LMSTUDIO_LLAMA_MODEL = process.env.LMSTUDIO_LLAMA_MODEL || 'llama-3.2-3b-instruct';
+const LMSTUDIO_QWEN_MODEL = process.env.LMSTUDIO_QWEN_MODEL || 'qwen2.5-coder-7b-instruct';
 const LMSTUDIO_EMBED_MODEL = process.env.LMSTUDIO_EMBED_MODEL || 'text-embedding-nomic-embed-text-v1.5';
-const LMSTUDIO_TIMEOUT_MS = Number(process.env.LMSTUDIO_TIMEOUT_MS) || 8000;
+const LMSTUDIO_TIMEOUT_MS = Number(process.env.LMSTUDIO_TIMEOUT_MS) || 75000;
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const GEMINI_EMBED_MODEL = process.env.GEMINI_EMBED_MODEL || 'gemini-embedding-001';
 const GEMINI_TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT_MS) || 9000;
 
-// Configurable active provider: 'lmstudio' | 'gemini'
-let activeProvider = process.env.ACTIVE_AI_PROVIDER || 'lmstudio';
+// Configurable active provider: 'llama' | 'qwen' | 'gemini' (or 'lmstudio' backwards-compatible)
+let activeProvider = process.env.ACTIVE_AI_PROVIDER || 'llama';
+if (activeProvider === 'lmstudio') activeProvider = 'llama';
+
+export function getModelForProvider(provider = activeProvider) {
+  if (provider === 'qwen') return LMSTUDIO_QWEN_MODEL;
+  if (provider === 'llama') return LMSTUDIO_LLAMA_MODEL;
+  return LMSTUDIO_LLAMA_MODEL;
+}
 
 // Asynchronously load stored provider from system_settings if present
 async function loadPersistedProvider() {
   try {
     const res = await query("SELECT value FROM system_settings WHERE key = 'ai_provider'");
     if (res.rows.length > 0 && res.rows[0].value?.provider) {
-      activeProvider = res.rows[0].value.provider;
+      const stored = res.rows[0].value.provider;
+      activeProvider = stored === 'lmstudio' ? 'llama' : stored;
     }
   } catch {
     // Graceful fallback if database table not yet populated
@@ -47,39 +57,62 @@ export function getActiveProvider() {
 }
 
 export function setActiveProvider(provider) {
-  if (provider !== 'lmstudio' && provider !== 'gemini') {
-    throw new Error(`Invalid provider: ${provider}. Must be 'lmstudio' or 'gemini'.`);
+  const normalized = provider === 'lmstudio' ? 'llama' : provider;
+  if (!['llama', 'qwen', 'gemini'].includes(normalized)) {
+    throw new Error(`Invalid provider: ${provider}. Must be 'llama', 'qwen', or 'gemini'.`);
   }
-  activeProvider = provider;
+  activeProvider = normalized;
   return activeProvider;
 }
 
 export function getProvidersConfig() {
   return {
     activeProvider,
-    lmstudio: {
-      name: 'Gemma 4 E4B (LM Studio)',
+    llama: {
+      id: 'llama',
+      name: 'Llama 3.2 3B Instruct',
       baseUrl: LMSTUDIO_BASE_URL,
-      model: LMSTUDIO_MODEL,
-      embedModel: LMSTUDIO_EMBED_MODEL,
+      model: LMSTUDIO_LLAMA_MODEL,
+      timeoutMs: 45000,
+      isLocal: true,
+      description: 'Ultra-fast, lightweight on-premise inference via LM Studio. Excellent for quick diagnostic questions and MCQs.'
+    },
+    qwen: {
+      id: 'qwen',
+      name: 'Qwen 2.5 Coder 7B',
+      baseUrl: LMSTUDIO_BASE_URL,
+      model: LMSTUDIO_QWEN_MODEL,
       timeoutMs: LMSTUDIO_TIMEOUT_MS,
       isLocal: true,
+      description: 'Code-specialized local intelligence via LM Studio. Gold standard for coding challenges and unit-test validation.'
     },
     gemini: {
+      id: 'gemini',
       name: 'Google Gemini API',
       model: GEMINI_MODEL,
       embedModel: GEMINI_EMBED_MODEL,
       timeoutMs: GEMINI_TIMEOUT_MS,
       hasKey: Boolean(GEMINI_API_KEY),
       isLocal: false,
+      description: 'Cloud generation with high throughput and broad context reasoning via Google Generative Language.'
+    },
+    // Backwards compatibility alias
+    lmstudio: {
+      name: activeProvider === 'qwen' ? 'Qwen 2.5 Coder 7B (LM Studio)' : 'Llama 3.2 3B Instruct (LM Studio)',
+      baseUrl: LMSTUDIO_BASE_URL,
+      model: getModelForProvider(activeProvider),
+      embedModel: LMSTUDIO_EMBED_MODEL,
+      timeoutMs: LMSTUDIO_TIMEOUT_MS,
+      isLocal: true,
     }
   };
 }
 
 export async function testProviderConnection(provider = activeProvider) {
-  const target = provider === 'gemini' ? 'gemini' : 'lmstudio';
+  const normalized = provider === 'lmstudio' ? 'llama' : provider;
   const start = Date.now();
-  if (target === 'gemini') {
+
+  if (normalized === 'gemini') {
     if (!GEMINI_API_KEY) {
       return {
         success: false,
@@ -107,26 +140,29 @@ export async function testProviderConnection(provider = activeProvider) {
         error: err.message
       };
     }
-  } else {
-    try {
-      await callLMStudioChat('Respond with {"status":"ok"}', { json: true });
-      const latencyMs = Date.now() - start;
-      return {
-        success: true,
-        provider: 'lmstudio',
-        model: LMSTUDIO_MODEL,
-        latencyMs,
-        message: `Connected successfully to LM Studio ${LMSTUDIO_MODEL} (${latencyMs}ms)`
-      };
-    } catch (err) {
-      return {
-        success: false,
-        provider: 'lmstudio',
-        model: LMSTUDIO_MODEL,
-        latencyMs: Date.now() - start,
-        error: `LM Studio not reachable at ${LMSTUDIO_BASE_URL}: ${err.message}`
-      };
-    }
+  }
+
+  // Local LM Studio models (llama or qwen)
+  const targetModel = getModelForProvider(normalized);
+  const targetName = normalized === 'qwen' ? 'Qwen 2.5 Coder 7B' : 'Llama 3.2 3B Instruct';
+  try {
+    await callLMStudioChat('Respond with {"status":"ok"}', { json: true, model: targetModel, timeout: 15000 });
+    const latencyMs = Date.now() - start;
+    return {
+      success: true,
+      provider: normalized,
+      model: targetModel,
+      latencyMs,
+      message: `Connected successfully to ${targetName} (${targetModel}, ${latencyMs}ms)`
+    };
+  } catch (err) {
+    return {
+      success: false,
+      provider: normalized,
+      model: targetModel,
+      latencyMs: Date.now() - start,
+      error: `LM Studio connection error (${targetModel}): ${err.message}`
+    };
   }
 }
 
@@ -148,56 +184,58 @@ const LM_API_TOKEN = process.env.LM_API_TOKEN || '';
 // Low-level provider calls: LM Studio (local) & Gemini (cloud)
 // ---------------------------------------------------------------------------
 
-async function callLMStudioChat(prompt, { json = true, temperature = 0.6, system = '' } = {}) {
+async function callLMStudioChat(prompt, { json = true, temperature = 0.6, system = '', timeout = LMSTUDIO_TIMEOUT_MS, model } = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (LM_API_TOKEN) {
     headers['Authorization'] = `Bearer ${LM_API_TOKEN}`;
   }
 
-  const fullPrompt = system ? `${system}\n\n${prompt}` : prompt;
+  const targetModel = model || getModelForProvider(activeProvider);
+  const messages = [];
+  if (system) messages.push({ role: 'system', content: system });
+  messages.push({ role: 'user', content: prompt });
 
+  // Try OpenAI-compatible endpoint with explicit reasoning_effort: 'none'
   try {
-    // Primary: LM Studio native v1 API format (http://localhost:1234/api/v1/chat)
     const res = await axios.post(
-      LMSTUDIO_CHAT_URL,
+      `${LMSTUDIO_BASE_URL}/chat/completions`,
       {
-        model: LMSTUDIO_MODEL,
-        input: fullPrompt,
+        model: targetModel,
+        messages,
         temperature,
-        context_length: 8000
+        reasoning_effort: 'none',
+        max_tokens: 2048
       },
-      { headers, timeout: LMSTUDIO_TIMEOUT_MS }
+      { headers, timeout }
     );
 
-    const outputList = res.data?.output;
-    if (Array.isArray(outputList) && outputList.length > 0) {
-      const msgObj = outputList.find(item => item.type === 'message') || outputList[0];
-      if (msgObj?.content) return msgObj.content;
-    }
-    if (res.data?.choices?.[0]?.message?.content) {
-      return res.data.choices[0].message.content;
-    }
-  } catch (apiErr) {
-    // Fallback: OpenAI-compatible completions format
+    const content = res.data?.choices?.[0]?.message?.content;
+    if (content) return content;
+  } catch (openAiErr) {
+    // Fallback: LM Studio native v1 API format
     try {
-      const messages = [];
-      if (system) messages.push({ role: 'system', content: system });
-      messages.push({ role: 'user', content: prompt });
-
+      const fullPrompt = system ? `${system}\n\n${prompt}` : prompt;
       const res = await axios.post(
-        `${LMSTUDIO_BASE_URL}/chat/completions`,
+        LMSTUDIO_CHAT_URL,
         {
-          model: LMSTUDIO_MODEL,
-          messages,
-          temperature
+          model: targetModel,
+          input: fullPrompt,
+          temperature,
+          context_length: 8000
         },
-        { headers, timeout: LMSTUDIO_TIMEOUT_MS }
+        { headers, timeout }
       );
 
-      const content = res.data?.choices?.[0]?.message?.content;
-      if (content) return content;
-    } catch (fallbackErr) {
-      throw new Error(`LM Studio error: ${apiErr.message}`);
+      const outputList = res.data?.output;
+      if (Array.isArray(outputList) && outputList.length > 0) {
+        const msgObj = outputList.find(item => item.type === 'message') || outputList[0];
+        if (msgObj?.content) return msgObj.content;
+      }
+      if (res.data?.choices?.[0]?.message?.content) {
+        return res.data.choices[0].message.content;
+      }
+    } catch (nativeErr) {
+      throw new Error(`LM Studio error: ${openAiErr.message}`);
     }
   }
 
@@ -418,6 +456,15 @@ export async function generateQuestion(blueprint) {
   }
 }
 
+function cleanPythonCode(code) {
+  if (typeof code !== 'string') return '';
+  return code
+    .replace(/^```(?:python)?\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .replace(/^(?:python|py)\s*\n/i, '')
+    .trim();
+}
+
 /**
  * Generates one auto-graded Code Lab challenge (Python, stdin/stdout).
  *
@@ -457,49 +504,59 @@ Respond ONLY with valid JSON:
   "test_case_inputs": ["raw stdin value 1", "raw stdin value 2", "raw stdin value 3 (an edge case)"]
 }`;
 
-  const raw = await chatComplete(prompt, { json: true, temperature: 0.7 });
-  const parsed = extractJSON(raw);
+  try {
+    const raw = await chatComplete(prompt, { json: true, temperature: 0.3 });
+    const parsed = extractJSON(raw);
 
-  if (
-    !parsed?.title ||
-    !parsed?.description ||
-    !parsed?.initial_code ||
-    !parsed?.reference_solution ||
-    !Array.isArray(parsed?.test_case_inputs) ||
-    parsed.test_case_inputs.length < 2
-  ) {
-    throw new Error('AI output did not match required coding-challenge schema');
-  }
-  if (!/TODO/i.test(parsed.initial_code)) {
-    throw new Error('initial_code has no TODO marker — likely not a genuine incomplete stub');
-  }
-  if (parsed.initial_code.trim() === parsed.reference_solution.trim()) {
-    throw new Error('initial_code is identical to reference_solution — gives away the answer');
-  }
-
-  // Ground truth comes from actually running the reference solution, never
-  // from whatever output value the model claims.
-  const test_cases = [];
-  for (let i = 0; i < parsed.test_case_inputs.length; i++) {
-    const input = String(parsed.test_case_inputs[i]);
-    const result = await runLocally('python', parsed.reference_solution, input);
-    if (result.exitCode !== 0 || !result.stdout || !result.stdout.trim()) {
-      throw new Error(`Reference solution failed self-check on test case ${i + 1}: ${(result.stderr || 'empty output').slice(0, 200)}`);
+    if (
+      !parsed?.title ||
+      !parsed?.description ||
+      !parsed?.initial_code ||
+      !parsed?.reference_solution ||
+      !Array.isArray(parsed?.test_case_inputs) ||
+      parsed.test_case_inputs.length < 2
+    ) {
+      throw new Error('AI output did not match required coding-challenge schema');
     }
-    test_cases.push({ input, expected_output: result.stdout.trim(), is_hidden: i >= 1 });
-  }
 
-  return {
-    concept,
-    subconcept,
-    difficulty,
-    title: parsed.title,
-    description: parsed.description,
-    initial_code: parsed.initial_code,
-    expected_behaviour: parsed.expected_behaviour || 'Produces the correct output for each test case.',
-    test_cases,
-    diagnostic_tags: Array.isArray(parsed.diagnostic_tags) ? parsed.diagnostic_tags : [],
-  };
+    parsed.initial_code = cleanPythonCode(parsed.initial_code);
+    parsed.reference_solution = cleanPythonCode(parsed.reference_solution);
+
+    if (!/TODO/i.test(parsed.initial_code)) {
+      throw new Error('initial_code has no TODO marker — likely not a genuine incomplete stub');
+    }
+    if (parsed.initial_code.trim() === parsed.reference_solution.trim()) {
+      throw new Error('initial_code is identical to reference_solution — gives away the answer');
+    }
+
+    // Ground truth comes from actually running the reference solution, never
+    // from whatever output value the model claims.
+    const test_cases = [];
+    for (let i = 0; i < parsed.test_case_inputs.length; i++) {
+      const input = String(parsed.test_case_inputs[i]);
+      const result = await runLocally('python', parsed.reference_solution, input);
+      if (result.exitCode !== 0 || !result.stdout || !result.stdout.trim()) {
+        throw new Error(`Reference solution failed self-check on test case ${i + 1}: ${(result.stderr || 'empty output').slice(0, 200)}`);
+      }
+      test_cases.push({ input, expected_output: result.stdout.trim(), is_hidden: i >= 1 });
+    }
+
+    return {
+      concept,
+      subconcept,
+      difficulty,
+      title: parsed.title,
+      description: parsed.description,
+      initial_code: parsed.initial_code,
+      expected_behaviour: parsed.expected_behaviour || 'Produces the correct output for each test case.',
+      test_cases,
+      diagnostic_tags: Array.isArray(parsed.diagnostic_tags) ? parsed.diagnostic_tags : [],
+      source: 'ai'
+    };
+  } catch (err) {
+    console.warn(`[ModelAdapter] Challenge generation failed (${err.message}). Using validated fallback challenge pool.`);
+    return buildFallbackChallenge(concept, subconcept, difficulty);
+  }
 }
 
 export async function generateDiagnostic(gap) {
