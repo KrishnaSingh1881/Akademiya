@@ -117,12 +117,12 @@ html, body, #root {
 }
 
 .window-titlebar {
-  height: 42px;
-  min-height: 42px;
+  height: 38px;
+  min-height: 38px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 0 0 16px;
   background: var(--window-header);
   border-bottom: 1px solid var(--panel-border);
   user-select: none;
@@ -136,15 +136,15 @@ html, body, #root {
 
 .window-title {
   flex: 1;
-  text-align: center;
-  font-size: 13px;
+  text-align: left;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.01em;
   color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 0 12px;
+  padding: 0 8px 0 0;
 }
 
 .window-content {
@@ -179,7 +179,50 @@ html[data-font-scale="large"] {
   zoom: 1.12;
 }
 
-/* ── Traffic Lights (macOS style with Keyline icons) ── */
+/* ── Windows Window Controls ([-] [o] [x] at top right) ── */
+.window-controls-container {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+  margin-left: auto;
+}
+
+.window-control-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  outline: none;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.window-control-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+.window-control-btn:active {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.window-control-close:hover {
+  background: #e81123 !important;
+  color: #ffffff !important;
+}
+
+.window-control-close:active {
+  background: #c4101d !important;
+  color: #ffffff !important;
+}
+
+/* ── Legacy Traffic Lights (fallback) ── */
 .traffic-lights-container {
   display: flex;
   align-items: center;

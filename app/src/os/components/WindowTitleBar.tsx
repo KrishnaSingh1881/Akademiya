@@ -14,13 +14,10 @@ export default function WindowTitleBar({ windowId, title, isMaximized, onDoubleC
       onDoubleClick={onDoubleClick}
       className="window-titlebar"
     >
-      <div style={{ display: 'flex', alignItems: 'center', width: 92, flexShrink: 0 }}>
-        <TrafficLights windowId={windowId} isMaximized={isMaximized} />
-      </div>
       <div className="window-title">
         {title}
       </div>
-      <div style={{ width: 92, flexShrink: 0 }} />
+      <TrafficLights windowId={windowId} isMaximized={isMaximized} />
     </div>
   );
 }

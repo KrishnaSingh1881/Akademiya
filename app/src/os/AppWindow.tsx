@@ -8,6 +8,44 @@ interface AppWindowProps {
   children: React.ReactNode;
 }
 
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class WindowErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('Window application crashed:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>
+          <p style={{ fontWeight: 600, color: '#f87171', marginBottom: 8 }}>
+            This application encountered an unexpected error.
+          </p>
+          <p style={{ fontSize: 12 }}>{this.state.error?.message}</p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function AppWindow({ window: win, children }: AppWindowProps) {
   const { focusWindow, updatePosition, updateSize, maximizeWindow, unmaximizeWindow } = useOSStore();
   const rndRef = useRef<Rnd>(null);
@@ -56,7 +94,9 @@ export default function AppWindow({ window: win, children }: AppWindowProps) {
           color: 'var(--text-primary)',
         }}
       >
-        {children}
+        <WindowErrorBoundary>
+          {children}
+        </WindowErrorBoundary>
       </div>
     </Rnd>
   );
