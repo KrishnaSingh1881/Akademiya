@@ -31,9 +31,31 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
   const [testTitle, setTestTitle] = useState('Recursion Mastery Assessment');
   const [concept, setConcept] = useState('Recursion');
   const [subconcept, setSubconcept] = useState('Base Case Termination');
-  const [requestedCount, setRequestedCount] = useState(4);
-  const [bloomLevel, setBloomLevel] = useState('apply');
+  const [requestedCount, setRequestedCount] = useState(6);
   const [difficulty, setDifficulty] = useState('medium');
+
+  // Bloom's Taxonomy spectrum + question-type mix controls
+  const BLOOM_LEVELS = ['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create'] as const;
+  const distributeEven = (count: number, n: number) => {
+    const base = Math.floor(count / n);
+    const remainder = count % n;
+    return Array.from({ length: n }, (_, i) => base + (i < remainder ? 1 : 0));
+  };
+  const [structureMode, setStructureMode] = useState<'class_capability' | 'manual'>('class_capability');
+  const [bloomCounts, setBloomCounts] = useState<Record<string, number>>(() =>
+    BLOOM_LEVELS.reduce((acc, level, i) => ({ ...acc, [level]: distributeEven(6, 6)[i] }), {})
+  );
+  const [includeDescriptive, setIncludeDescriptive] = useState(true);
+  const [descriptivePercent, setDescriptivePercent] = useState(30);
+
+  const handleRequestedCountChange = (value: number) => {
+    const clamped = Math.min(20, Math.max(1, value || 1));
+    setRequestedCount(clamped);
+    const evenSplit = distributeEven(clamped, BLOOM_LEVELS.length);
+    setBloomCounts(BLOOM_LEVELS.reduce((acc, level, i) => ({ ...acc, [level]: evenSplit[i] }), {}));
+  };
+
+  const bloomCountSum = Object.values(bloomCounts).reduce((a, b) => a + Number(b || 0), 0);
   const [generating, setGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState<{ current: number; total: number; pct: number } | null>(null);
   const [streamedQuestions, setStreamedQuestions] = useState<any[]>([]);
@@ -114,11 +136,25 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
       const newAssessmentId = assessRes.data.assessment.id;
 
       // 2. Launch Generation Job with assessment_id
+      const typeMix = includeDescriptive
+        ? {
+            mcq_single: Math.max(1, Math.round(requestedCount * (1 - descriptivePercent / 100))),
+            descriptive: Math.max(0, Math.round(requestedCount * (descriptivePercent / 100))),
+          }
+        : { mcq_single: requestedCount };
+
       const jobRes = await axios.post('/api/generation-jobs', {
         concept,
         subconcept,
         requested_count: Number(requestedCount),
+        difficulty,
         assessment_id: newAssessmentId,
+        type_mix: typeMix,
+        // Manual mode sends the teacher's exact per-level counts; otherwise the
+        // server structures the mix itself from class-wide accuracy on this concept.
+        ...(structureMode === 'manual'
+          ? { bloom_distribution: bloomCounts }
+          : { use_class_capability: true }),
       });
       const newJobId = jobRes.data.job_id;
       setJobId(newJobId);
@@ -138,9 +174,9 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
           const data = JSON.parse(event.data);
           if (data.type === 'generation.progress') {
             setGenerationProgress({
-              current: data.generated_count,
-              total: data.requested_count,
-              pct: Math.round((data.generated_count / data.requested_count) * 100)
+              current: data.current,
+              total: data.total,
+              pct: Math.round((data.current / data.total) * 100)
             });
           } else if (data.type === 'question.generated' && data.question) {
             setStreamedQuestions(prev => [...prev, data.question]);
@@ -427,7 +463,7 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
                     min={1}
                     max={20}
                     value={requestedCount}
-                    onChange={(e) => setRequestedCount(Number(e.target.value))}
+                    onChange={(e) => handleRequestedCountChange(Number(e.target.value))}
                     style={{
                       width: '100%',
                       marginTop: 6,
@@ -439,32 +475,6 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
                       fontSize: 13,
                     }}
                   />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
-                    Bloom Cognitive Target
-                  </label>
-                  <select
-                    value={bloomLevel}
-                    onChange={(e) => setBloomLevel(e.target.value)}
-                    style={{
-                      width: '100%',
-                      marginTop: 6,
-                      padding: '8px 12px',
-                      borderRadius: 8,
-                      background: 'var(--input-bg)',
-                      border: '1px solid var(--panel-border)',
-                      color: 'var(--text-primary)',
-                      fontSize: 13,
-                    }}
-                  >
-                    <option value="remember" style={{ background: '#1e293b' }}>Remember</option>
-                    <option value="understand" style={{ background: '#1e293b' }}>Understand</option>
-                    <option value="apply" style={{ background: '#1e293b' }}>Apply</option>
-                    <option value="analyze" style={{ background: '#1e293b' }}>Analyze</option>
-                    <option value="evaluate" style={{ background: '#1e293b' }}>Evaluate</option>
-                  </select>
                 </div>
 
                 <div>
@@ -489,6 +499,123 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
                     <option value="medium" style={{ background: '#1e293b' }}>Medium</option>
                     <option value="hard" style={{ background: '#1e293b' }}>Hard</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Bloom's Taxonomy structuring + question type mix */}
+              <div
+                style={{
+                  background: 'rgba(129, 140, 248, 0.06)',
+                  border: '1px solid rgba(129, 140, 248, 0.25)',
+                  borderRadius: 12,
+                  padding: 14,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 12,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>Bloom's Taxonomy Structuring (all 6 levels)</div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button
+                      type="button"
+                      onClick={() => setStructureMode('class_capability')}
+                      className={structureMode === 'class_capability' ? 'btn-primary' : 'btn-secondary'}
+                      style={{ fontSize: 11, padding: '5px 10px' }}
+                    >
+                      Structure from Class Performance
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStructureMode('manual')}
+                      className={structureMode === 'manual' ? 'btn-primary' : 'btn-secondary'}
+                      style={{ fontSize: 11, padding: '5px 10px' }}
+                    >
+                      Manual Distribution
+                    </button>
+                  </div>
+                </div>
+
+                {structureMode === 'class_capability' ? (
+                  <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    The test is generated across all six Bloom levels (Remember → Create), weighted by this class's
+                    recent accuracy on <strong>{concept} — {subconcept || 'this subconcept'}</strong>. Weaker
+                    performance shifts more questions toward Remember/Understand/Apply; stronger performance shifts
+                    more toward Analyze/Evaluate/Create.
+                  </div>
+                ) : (
+                  <div>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(6, 1fr)',
+                        gap: 8,
+                      }}
+                    >
+                      {BLOOM_LEVELS.map((level) => (
+                        <div key={level}>
+                          <label style={{ fontSize: 10, textTransform: 'capitalize', color: 'var(--text-secondary)' }}>
+                            {level}
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            max={20}
+                            value={bloomCounts[level]}
+                            onChange={(e) =>
+                              setBloomCounts((prev) => ({ ...prev, [level]: Math.max(0, Number(e.target.value) || 0) }))
+                            }
+                            style={{
+                              width: '100%',
+                              marginTop: 4,
+                              padding: '6px 8px',
+                              borderRadius: 6,
+                              background: 'var(--input-bg)',
+                              border: '1px solid var(--panel-border)',
+                              color: 'var(--text-primary)',
+                              fontSize: 12,
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <div
+                      style={{
+                        marginTop: 6,
+                        fontSize: 11,
+                        color: bloomCountSum === requestedCount ? 'var(--text-muted)' : '#f87171',
+                      }}
+                    >
+                      Bloom counts total {bloomCountSum} / {requestedCount} question{requestedCount === 1 ? '' : 's'}
+                      {bloomCountSum !== requestedCount && ' — will be proportionally rescaled to match the count.'}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12 }}>
+                    <input
+                      type="checkbox"
+                      checked={includeDescriptive}
+                      onChange={(e) => setIncludeDescriptive(e.target.checked)}
+                      style={{ accentColor: '#6366f1' }}
+                    />
+                    Include descriptive (free-text) questions
+                  </label>
+                  {includeDescriptive && (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: 'var(--text-secondary)' }}>
+                      Descriptive share:
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={descriptivePercent}
+                        onChange={(e) => setDescriptivePercent(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
+                        style={{ width: 60, padding: '4px 6px', borderRadius: 6, background: 'var(--input-bg)', border: '1px solid var(--panel-border)', color: 'var(--text-primary)', fontSize: 11 }}
+                      />
+                      %
+                    </label>
+                  )}
                 </div>
               </div>
 
@@ -639,31 +766,57 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
                           fontSize: 12,
                         }}
                       >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                          {q.bloom_level && (
+                            <span className="badge" style={{ background: '#4338ca', color: '#fff', fontSize: 9, padding: '2px 6px', borderRadius: 5, textTransform: 'capitalize' }}>
+                              {q.bloom_level}
+                            </span>
+                          )}
+                          <span className="badge" style={{ background: '#334155', color: '#fff', fontSize: 9, padding: '2px 6px', borderRadius: 5 }}>
+                            {q.type === 'descriptive' ? 'Descriptive' : 'MCQ'}
+                          </span>
+                        </div>
                         <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
                           {idx + 1}. {q.statement}
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                          {q.options && q.options.map((opt: any) => {
-                            const isCorrect = Array.isArray(q.correct_option_ids) && q.correct_option_ids.includes(opt.id);
-                            return (
-                              <div
-                                key={opt.id}
-                                style={{
-                                  padding: '4px 8px',
-                                  borderRadius: 6,
-                                  background: isCorrect ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255,255,255,0.02)',
-                                  border: `1px solid ${isCorrect ? 'rgba(16, 185, 129, 0.4)' : 'rgba(255,255,255,0.05)'}`,
-                                  color: isCorrect ? '#34d399' : 'var(--text-secondary)',
-                                  fontSize: 11,
-                                }}
-                              >
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                  {isCorrect ? <Check size={11} /> : '•'} {opt.text}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
+                        {q.type === 'descriptive' ? (
+                          <div
+                            style={{
+                              padding: '6px 8px',
+                              borderRadius: 6,
+                              background: 'rgba(16, 185, 129, 0.1)',
+                              border: '1px solid rgba(16, 185, 129, 0.3)',
+                              color: '#34d399',
+                              fontSize: 11,
+                            }}
+                          >
+                            Reference answer: {q.reference_answer}
+                          </div>
+                        ) : (
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                            {q.options && (typeof q.options === 'string' ? JSON.parse(q.options) : q.options).map((opt: any) => {
+                              const correctIds = typeof q.correct_option_ids === 'string' ? JSON.parse(q.correct_option_ids) : q.correct_option_ids;
+                              const isCorrect = Array.isArray(correctIds) && correctIds.includes(opt.id);
+                              return (
+                                <div
+                                  key={opt.id}
+                                  style={{
+                                    padding: '4px 8px',
+                                    borderRadius: 6,
+                                    background: isCorrect ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255,255,255,0.02)',
+                                    border: `1px solid ${isCorrect ? 'rgba(16, 185, 129, 0.4)' : 'rgba(255,255,255,0.05)'}`,
+                                    color: isCorrect ? '#34d399' : 'var(--text-secondary)',
+                                    fontSize: 11,
+                                  }}
+                                >
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                    {isCorrect ? <Check size={11} /> : '•'} {opt.text}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

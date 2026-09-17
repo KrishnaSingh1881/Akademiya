@@ -17,6 +17,85 @@
 
 import { query } from '../db/index.js';
 
+export const BLOOM_LEVELS = ['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create'];
+
+/**
+ * Bloom-level weight profile chosen by demonstrated accuracy on a concept.
+ * Every level always keeps weight >= 1 so a generation request still covers
+ * all six levels — capability only shifts the emphasis, it never excludes one.
+ */
+function weightsForAccuracy(accuracy) {
+  if (accuracy === null) return [1, 1, 1, 1, 1, 1]; // no evidence yet: even spread
+  if (accuracy < 0.4) return [4, 3, 2, 1, 1, 1]; // struggling: emphasize foundational levels
+  if (accuracy > 0.75) return [1, 1, 1, 2, 3, 4]; // strong: emphasize higher-order levels
+  return [1, 2, 2, 2, 2, 1]; // solid grasp: balanced, slight lean to apply/analyze
+}
+
+/** Largest-remainder rounding so proportional counts always sum to exactly `count`. */
+function distributeCounts(weights, count) {
+  const totalWeight = weights.reduce((a, b) => a + b, 0);
+  const raw = weights.map(w => (w / totalWeight) * count);
+  const floors = raw.map(Math.floor);
+  const remainder = count - floors.reduce((a, b) => a + b, 0);
+  const order = raw
+    .map((v, i) => ({ i, frac: v - Math.floor(v) }))
+    .sort((a, b) => b.frac - a.frac);
+
+  const result = [...floors];
+  for (let k = 0; k < remainder; k++) {
+    result[order[k % order.length].i] += 1;
+  }
+
+  return BLOOM_LEVELS.reduce((acc, level, i) => {
+    acc[level] = result[i];
+    return acc;
+  }, {});
+}
+
+/**
+ * Recent accuracy for a concept/subconcept, scoped to one student or the
+ * whole student population. Returns null when there is not yet any evidence
+ * (kept distinct from 0, which would mean "evidence exists and it's all wrong").
+ */
+async function conceptAccuracy(concept, subconcept, studentId = null) {
+  const params = [concept, subconcept];
+  let studentFilter = '';
+  if (studentId) {
+    params.push(studentId);
+    studentFilter = `AND student_id = $${params.length}`;
+  }
+
+  const result = await query(
+    `SELECT result FROM learning_evidence
+     WHERE concept = $1 AND subconcept = $2 ${studentFilter}
+     ORDER BY created_at DESC
+     LIMIT 20`,
+    params
+  );
+
+  if (result.rows.length === 0) return null;
+  const correct = result.rows.filter(r => r.result === 'correct').length;
+  return correct / result.rows.length;
+}
+
+/** Personalizes a Bloom-level count distribution to one student's own evidence. */
+export async function computeStudentBloomDistribution(studentId, concept, subconcept, count) {
+  const accuracy = await conceptAccuracy(concept, subconcept, studentId);
+  return {
+    distribution: distributeCounts(weightsForAccuracy(accuracy), count),
+    capability_basis: { scope: 'student', accuracy }
+  };
+}
+
+/** Structures a Bloom-level count distribution using class-wide (all students) evidence. */
+export async function computeClassBloomDistribution(concept, subconcept, count) {
+  const accuracy = await conceptAccuracy(concept, subconcept, null);
+  return {
+    distribution: distributeCounts(weightsForAccuracy(accuracy), count),
+    capability_basis: { scope: 'class', accuracy }
+  };
+}
+
 export async function aggregateEvidence(studentId, concept) {
   const result = await query(
     `SELECT id, student_id, concept, subconcept, attempt_id, result, source, created_at

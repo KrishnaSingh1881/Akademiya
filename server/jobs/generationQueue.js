@@ -30,7 +30,14 @@ class GenerationQueue {
   }
 
   async runJob(job) {
-    const { id: jobId, teacher_id, requested_count, blueprint, assessment_id = null } = job;
+    const {
+      id: jobId,
+      requested_count,
+      itemBlueprints,
+      assessment_id = null,
+      generated_for_student_id = null
+    } = job;
+
     broadcastJobEvent(jobId, 'generation.started', { requested_count });
 
     let generatedCount = 0;
@@ -45,6 +52,8 @@ class GenerationQueue {
         return;
       }
 
+      const itemBlueprint = itemBlueprints[i - 1];
+
       let attemptNo = 0;
       let questionObj = null;
       let isValid = false;
@@ -53,19 +62,18 @@ class GenerationQueue {
       while (attemptNo < MAX_RETRIES && !isValid) {
         attemptNo++;
         try {
-          const generated = await generateQuestion(blueprint);
-          // Schema Validation
-          if (
-            generated &&
-            generated.statement &&
-            Array.isArray(generated.options) &&
-            generated.options.length >= 2 &&
-            Array.isArray(generated.correct_option_ids) &&
-            (generated.type !== 'mcq_single' || generated.correct_option_ids.length === 1)
-          ) {
-            questionObj = generated;
-            isValid = true;
-          }
+          const generated = await generateQuestion(itemBlueprint);
+          isValid = itemBlueprint.type === 'descriptive'
+            ? !!(generated && generated.statement && generated.reference_answer)
+            : !!(
+              generated &&
+              generated.statement &&
+              Array.isArray(generated.options) &&
+              generated.options.length >= 2 &&
+              Array.isArray(generated.correct_option_ids) &&
+              (generated.type !== 'mcq_single' || generated.correct_option_ids.length === 1)
+            );
+          if (isValid) questionObj = generated;
         } catch (err) {
           console.warn(`[Queue] Attempt ${attemptNo} failed for item ${i}:`, err.message);
         }
@@ -82,20 +90,29 @@ class GenerationQueue {
         continue;
       }
 
-      // 3. Optional: generate vector embedding for Phase 9 semantic layer
+      const isDescriptive = questionObj.type === 'descriptive';
+
+      // 3. Embeddings for Phase 9 semantic layer (question text, and reference
+      // answer for descriptive so attempts.js can compare it against student answers)
       let embedding = null;
+      let referenceAnswerEmbedding = null;
       try {
         const textToEmbed = `${questionObj.concept} ${questionObj.subconcept} ${questionObj.statement}`;
         embedding = await generateEmbedding(textToEmbed);
+        if (isDescriptive) {
+          referenceAnswerEmbedding = await generateEmbedding(questionObj.reference_answer);
+        }
       } catch (err) {
         console.warn('Embedding generation error:', err.message);
       }
 
       // 4. Insert into questions table (source = 'ai')
       const qRes = await query(
-        `INSERT INTO questions 
-         (assessment_id, concept, subconcept, type, statement, options, correct_option_ids, bloom_level, difficulty, source, embedding)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'ai', $10)
+        `INSERT INTO questions
+         (assessment_id, concept, subconcept, type, statement, options, correct_option_ids,
+          reference_answer, reference_answer_embedding, bloom_level, difficulty, source, embedding,
+          generated_for_student_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'ai', $12, $13)
          RETURNING *`,
         [
           assessment_id,
@@ -103,11 +120,14 @@ class GenerationQueue {
           questionObj.subconcept,
           questionObj.type,
           questionObj.statement,
-          JSON.stringify(questionObj.options),
-          JSON.stringify(questionObj.correct_option_ids),
+          isDescriptive ? null : JSON.stringify(questionObj.options),
+          isDescriptive ? null : JSON.stringify(questionObj.correct_option_ids),
+          isDescriptive ? questionObj.reference_answer : null,
+          referenceAnswerEmbedding ? `[${referenceAnswerEmbedding.join(',')}]` : null,
           questionObj.bloom_level,
           questionObj.difficulty,
-          embedding ? `[${embedding.join(',')}]` : null
+          embedding ? `[${embedding.join(',')}]` : null,
+          generated_for_student_id
         ]
       );
       const insertedQuestion = qRes.rows[0];

@@ -48,6 +48,16 @@ export default function PracticeLabApp() {
   const [lastResult, setLastResult] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  // ── AI-Generated Targeted Practice (self-serve, bounded, all 6 Bloom levels) ──
+  const [genConcept, setGenConcept] = useState('');
+  const [genSubconcept, setGenSubconcept] = useState('');
+  const [genCount, setGenCount] = useState(6);
+  const [genIncludeDescriptive, setGenIncludeDescriptive] = useState(true);
+  const [generatingPractice, setGeneratingPractice] = useState(false);
+  const [genProgress, setGenProgress] = useState<{ current: number; total: number } | null>(null);
+  const [genCapability, setGenCapability] = useState<{ accuracy: number | null } | null>(null);
+  const [showGenerator, setShowGenerator] = useState(false);
+
   // Assigned Assessments state
   const [assessments, setAssessments] = useState<any[]>([]);
   const [loadingAssessments, setLoadingAssessments] = useState(false);
@@ -119,6 +129,64 @@ export default function PracticeLabApp() {
     fetchPracticeQuestions();
     fetchAvailableAssessments();
   }, [user]);
+
+  // Self-serve bounded AI generation: student requests more targeted practice on a
+  // concept. The server always personalizes the Bloom-level mix to this student's
+  // own evidence (weak concepts skew toward Remember/Understand/Apply, strong ones
+  // toward Analyze/Evaluate/Create), and covers all six levels across the batch.
+  const handleGeneratePractice = async () => {
+    if (!genConcept.trim() || !genSubconcept.trim()) {
+      alert('Enter a concept and subconcept to generate targeted practice for.');
+      return;
+    }
+    setGeneratingPractice(true);
+    setGenProgress({ current: 0, total: genCount });
+    setGenCapability(null);
+
+    try {
+      const typeMix = genIncludeDescriptive
+        ? {
+            mcq_single: Math.max(1, Math.round(genCount * 0.6)),
+            descriptive: Math.max(0, genCount - Math.round(genCount * 0.6)),
+          }
+        : { mcq_single: genCount };
+
+      const jobRes = await axios.post('/api/generation-jobs', {
+        concept: genConcept.trim(),
+        subconcept: genSubconcept.trim(),
+        requested_count: genCount,
+        type_mix: typeMix,
+      });
+
+      setGenCapability(jobRes.data.capability_basis || null);
+      const newJobId = jobRes.data.job_id;
+
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const socket = new WebSocket(`${protocol}//${window.location.host}/ws`);
+
+      socket.onopen = () => socket.send(JSON.stringify({ subscribe: newJobId }));
+      socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'generation.progress') {
+            setGenProgress({ current: data.current, total: data.total });
+          } else if (data.type === 'question.generated' && data.question) {
+            setQuestions((prev) => [data.question, ...prev]);
+          } else if (data.type === 'generation.completed' || data.type === 'generation.cancelled') {
+            setGeneratingPractice(false);
+            socket.close();
+            fetchPracticeQuestions();
+          }
+        } catch (e) {
+          console.error('WS parse error:', e);
+        }
+      };
+      socket.onerror = () => setGeneratingPractice(false);
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to start practice generation');
+      setGeneratingPractice(false);
+    }
+  };
 
   // Dispatch forensic integrity violation event to backend
   const logIntegrityEvent = async (eventType: string, metadata: any = {}) => {
@@ -956,6 +1024,103 @@ export default function PracticeLabApp() {
 
       {/* ── VIEW 3: PRACTICE POOL (OPEN FORMATIVE PRACTICE) ── */}
       {viewMode === 'practice' && !examSessionStarted && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, flex: 1, minHeight: 0 }}>
+          {/* AI-Generated Targeted Practice (self-serve, bounded, all 6 Bloom levels) */}
+          <div className="glass-panel" style={{ borderRadius: 14, padding: 14, flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700 }}>
+                <Bot size={15} color="#818cf8" /> Generate Targeted Practice
+              </div>
+              <button
+                type="button"
+                className="btn-secondary"
+                style={{ fontSize: 11, padding: '5px 12px' }}
+                onClick={() => setShowGenerator((v) => !v)}
+              >
+                {showGenerator ? 'Hide' : 'New Practice Set'}
+              </button>
+            </div>
+
+            {showGenerator && (
+              <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                  AI generates a bounded set of practice questions across all six Bloom levels, personalized to your
+                  own recent accuracy on this concept — covering MCQ and, optionally, descriptive (free-text) questions.
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 100px', gap: 8 }}>
+                  <input
+                    type="text"
+                    placeholder="Concept (e.g. Recursion)"
+                    value={genConcept}
+                    onChange={(e) => setGenConcept(e.target.value)}
+                    style={{ padding: '8px 10px', borderRadius: 8, background: 'var(--input-bg)', border: '1px solid var(--panel-border)', color: 'var(--text-primary)', fontSize: 12 }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Subconcept (e.g. Base Case Termination)"
+                    value={genSubconcept}
+                    onChange={(e) => setGenSubconcept(e.target.value)}
+                    style={{ padding: '8px 10px', borderRadius: 8, background: 'var(--input-bg)', border: '1px solid var(--panel-border)', color: 'var(--text-primary)', fontSize: 12 }}
+                  />
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={genCount}
+                    onChange={(e) => setGenCount(Math.min(10, Math.max(1, Number(e.target.value) || 1)))}
+                    title="Question count (max 10)"
+                    style={{ padding: '8px 10px', borderRadius: 8, background: 'var(--input-bg)', border: '1px solid var(--panel-border)', color: 'var(--text-primary)', fontSize: 12 }}
+                  />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={genIncludeDescriptive}
+                      onChange={(e) => setGenIncludeDescriptive(e.target.checked)}
+                      style={{ accentColor: '#6366f1' }}
+                    />
+                    Include descriptive questions
+                  </label>
+                  <button
+                    onClick={handleGeneratePractice}
+                    disabled={generatingPractice}
+                    className="btn-primary"
+                    style={{ fontSize: 12, padding: '7px 16px', display: 'inline-flex', alignItems: 'center', gap: 6, opacity: generatingPractice ? 0.6 : 1 }}
+                  >
+                    <Zap size={13} /> {generatingPractice ? 'Generating...' : `Generate ${genCount} Questions`}
+                  </button>
+                </div>
+
+                {genCapability && (
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    Structured from your recent accuracy on this concept:{' '}
+                    {genCapability.accuracy === null ? 'no prior evidence yet (even spread across all levels)' : `${Math.round(genCapability.accuracy * 100)}%`}.
+                  </div>
+                )}
+
+                {generatingPractice && genProgress && (
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4 }}>
+                      <span>Streaming generation...</span>
+                      <span>{genProgress.current} / {genProgress.total}</span>
+                    </div>
+                    <div style={{ height: 5, background: 'rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden' }}>
+                      <div
+                        style={{
+                          height: '100%',
+                          width: `${genProgress.total ? Math.round((genProgress.current / genProgress.total) * 100) : 0}%`,
+                          background: 'linear-gradient(90deg, #38bdf8, #818cf8)',
+                          transition: 'width 0.3s ease',
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 14, flex: 1, minHeight: 0 }}>
           {/* Question List */}
           <div className="glass-panel" style={{ borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto' }}>
@@ -971,6 +1136,7 @@ export default function PracticeLabApp() {
                     onClick={() => {
                       setSelectedQuestion(q);
                       setSelectedOptionId('');
+                      setDescriptiveAnswer('');
                       setLastResult(null);
                     }}
                     style={{
@@ -982,8 +1148,15 @@ export default function PracticeLabApp() {
                       fontSize: 11,
                     }}
                   >
-                    <div style={{ fontWeight: 700, color: isSelected ? '#38bdf8' : 'var(--text-primary)' }}>
-                      {q.concept}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontWeight: 700, color: isSelected ? '#38bdf8' : 'var(--text-primary)' }}>
+                        {q.concept}
+                      </span>
+                      {q.bloom_level && (
+                        <span style={{ fontSize: 9, textTransform: 'capitalize', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.05)', padding: '1px 5px', borderRadius: 4 }}>
+                          {q.bloom_level}
+                        </span>
+                      )}
                     </div>
                     <div style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 10 }}>
                       {q.statement}
@@ -1005,8 +1178,8 @@ export default function PracticeLabApp() {
                   {selectedQuestion.statement}
                 </div>
 
-                {/* MCQ Options */}
-                {selectedQuestion.type !== 'descriptive' && (
+                {/* MCQ Options or Descriptive free-text answer */}
+                {selectedQuestion.type !== 'descriptive' ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {(() => {
                       const opts = typeof selectedQuestion.options === 'string'
@@ -1034,18 +1207,37 @@ export default function PracticeLabApp() {
                       });
                     })()}
                   </div>
+                ) : (
+                  <textarea
+                    value={descriptiveAnswer}
+                    onChange={(e) => setDescriptiveAnswer(e.target.value)}
+                    placeholder="Write your explanation in your own words..."
+                    rows={7}
+                    style={{
+                      width: '100%',
+                      padding: 12,
+                      borderRadius: 8,
+                      background: 'var(--input-bg)',
+                      color: 'var(--text-primary)',
+                      border: '1px solid var(--panel-border)',
+                      fontSize: 13,
+                      fontFamily: 'inherit',
+                      outline: 'none',
+                      resize: 'vertical',
+                    }}
+                  />
                 )}
 
                 <button
-                  disabled={submitting || !selectedOptionId}
+                  disabled={submitting || (selectedQuestion.type === 'descriptive' ? !descriptiveAnswer.trim() : !selectedOptionId)}
                   onClick={async () => {
                     setSubmitting(true);
                     try {
-                      const res = await axios.post('/api/attempts', {
-                        question_id: selectedQuestion.id,
-                        selected_option_ids: [selectedOptionId],
-                        source: 'practice',
-                      });
+                      const payload =
+                        selectedQuestion.type === 'descriptive'
+                          ? { question_id: selectedQuestion.id, answer: descriptiveAnswer, source: 'practice' }
+                          : { question_id: selectedQuestion.id, selected_option_ids: [selectedOptionId], source: 'practice' };
+                      const res = await axios.post('/api/attempts', payload);
                       setLastResult(res.data);
                     } catch (err: any) {
                       alert(err.response?.data?.error || 'Submission failed');
@@ -1059,19 +1251,50 @@ export default function PracticeLabApp() {
                   Submit Practice Attempt
                 </button>
 
-                {lastResult && (
+                {lastResult && selectedQuestion.type === 'descriptive' && lastResult.evaluation?.grading_details && (
                   <div
                     style={{
                       padding: 12,
                       borderRadius: 8,
-                      background: lastResult.is_correct ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                      border: lastResult.is_correct ? '1px solid #10b981' : '1px solid #ef4444',
-                      color: lastResult.is_correct ? '#34d399' : '#f87171',
+                      background: lastResult.evaluation.is_correct ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.1)',
+                      border: `1px solid ${lastResult.evaluation.is_correct ? '#10b981' : '#ef4444'}`,
+                      fontSize: 12,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 6,
+                    }}
+                  >
+                    <div style={{ fontWeight: 700, color: lastResult.evaluation.is_correct ? '#34d399' : '#f87171', textTransform: 'capitalize' }}>
+                      Verdict: {lastResult.evaluation.grading_details.verdict}
+                    </div>
+                    {lastResult.evaluation.grading_details.covered?.length > 0 && (
+                      <div>
+                        <span style={{ color: '#34d399' }}>Covered:</span>{' '}
+                        {lastResult.evaluation.grading_details.covered.join('; ')}
+                      </div>
+                    )}
+                    {lastResult.evaluation.grading_details.missed?.length > 0 && (
+                      <div>
+                        <span style={{ color: '#f87171' }}>Missed:</span>{' '}
+                        {lastResult.evaluation.grading_details.missed.join('; ')}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {lastResult && selectedQuestion.type !== 'descriptive' && (
+                  <div
+                    style={{
+                      padding: 12,
+                      borderRadius: 8,
+                      background: lastResult.evaluation?.is_correct ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                      border: lastResult.evaluation?.is_correct ? '1px solid #10b981' : '1px solid #ef4444',
+                      color: lastResult.evaluation?.is_correct ? '#34d399' : '#f87171',
                       fontSize: 12,
                       fontWeight: 700,
                     }}
                   >
-                    {lastResult.is_correct ? '✓ Correct Answer!' : '✗ Incorrect Answer. Keep practicing!'}
+                    {lastResult.evaluation?.is_correct ? '✓ Correct Answer!' : '✗ Incorrect Answer. Keep practicing!'}
                   </div>
                 )}
               </div>
@@ -1081,6 +1304,7 @@ export default function PracticeLabApp() {
               </div>
             )}
           </div>
+        </div>
         </div>
       )}
     </div>

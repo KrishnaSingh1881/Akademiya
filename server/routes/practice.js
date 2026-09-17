@@ -43,7 +43,7 @@ router.get('/:student_id', requireAuth, async (req, res) => {
                WHERE a.question_id = q.id AND a.student_id = $1
              ) as student_attempts
       FROM questions q
-      WHERE 1=1
+      WHERE (q.generated_for_student_id IS NULL OR q.generated_for_student_id = $1)
     `;
     const params = [studentId];
 

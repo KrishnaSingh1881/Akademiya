@@ -40,8 +40,14 @@ CREATE TABLE IF NOT EXISTS questions (
   difficulty VARCHAR(50),
   source VARCHAR(50) NOT NULL DEFAULT 'teacher' CHECK (source IN ('teacher', 'ai')),
   embedding vector(768),
+  -- Scopes a self-serve AI-generated practice question to the student it was
+  -- personalized for. NULL = shared pool (teacher-published / class assessment).
+  generated_for_student_id UUID REFERENCES users(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Idempotent for databases created before this column existed.
+ALTER TABLE questions ADD COLUMN IF NOT EXISTS generated_for_student_id UUID REFERENCES users(id) ON DELETE CASCADE;
 
 -- 4. attempts
 CREATE TABLE IF NOT EXISTS attempts (
@@ -224,6 +230,7 @@ CREATE TABLE IF NOT EXISTS student_topic_activity (
 
 -- Helpful indexes for rapid deterministic querying
 CREATE INDEX IF NOT EXISTS idx_questions_concept ON questions(concept, subconcept);
+CREATE INDEX IF NOT EXISTS idx_questions_generated_for_student ON questions(generated_for_student_id);
 CREATE INDEX IF NOT EXISTS idx_attempts_student ON attempts(student_id, question_id);
 CREATE INDEX IF NOT EXISTS idx_evidence_student_concept ON learning_evidence(student_id, concept);
 CREATE INDEX IF NOT EXISTS idx_gaps_student_status ON learning_gaps(student_id, status);
