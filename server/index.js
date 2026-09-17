@@ -18,6 +18,7 @@ import settingsRoutes from './routes/settings.js';
 import attendanceRoutes from './routes/attendance.js';
 import activityRoutes from './routes/activity.js';
 import sandboxRoutes from './routes/sandbox.js';
+import dashboardRoutes from './routes/dashboard.js';
 import { setupWebSocket } from './ws.js';
 
 dotenv.config();
@@ -77,6 +78,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/activity', activityRoutes);
 app.use('/api/sandbox', sandboxRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

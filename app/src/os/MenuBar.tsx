@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { LightbulbOn } from '@keyline-icons/react';
 import { Plus, Terminal, Sun, Moon, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -214,7 +215,18 @@ export default function MenuBar({ isDebuggerOpen, onToggleDebugger, onOpenCreate
           }}
           title="Toggle Theme"
         >
-          {isLight ? <Moon size={12} strokeWidth={2} /> : <Sun size={12} strokeWidth={2} />}
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.span
+              key={isLight ? 'moon' : 'sun'}
+              initial={{ rotate: -90, scale: 0.4, opacity: 0 }}
+              animate={{ rotate: 0, scale: 1, opacity: 1 }}
+              exit={{ rotate: 90, scale: 0.4, opacity: 0 }}
+              transition={{ duration: 0.22, ease: [0.34, 1.56, 0.64, 1] }}
+              style={{ display: 'inline-flex' }}
+            >
+              {isLight ? <Moon size={12} strokeWidth={2} /> : <Sun size={12} strokeWidth={2} />}
+            </motion.span>
+          </AnimatePresence>
           <span>{isLight ? 'Dark' : 'Light'}</span>
         </button>
 

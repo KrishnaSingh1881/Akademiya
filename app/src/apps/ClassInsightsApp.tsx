@@ -350,7 +350,7 @@ export default function ClassInsightsApp() {
 
       {/* Concept Breakdown (rendered when concepts tab is active) */}
       {activeTab === 'concepts' && (
-        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="stagger-fade-in" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
         <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-secondary)' }}>
           Concepts Needing Attention ({concepts.length})
         </h3>

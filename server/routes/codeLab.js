@@ -3,10 +3,22 @@ import { query } from '../db/index.js';
 import { requireAuth } from '../middleware/auth.js';
 import { runLocally } from '../lib/localRunner.js';
 import { evaluateDebugging } from '../lib/evaluator.js';
-import { generateExplanation } from '../ai/modelAdapter.js';
-import { detectGap } from '../services/evidenceService.js';
+import { generateExplanation, generateCodingChallenge } from '../ai/modelAdapter.js';
+import { detectGap, getWeaknessProfile } from '../services/evidenceService.js';
+import { getRemaining, consume, MAX_PER_SESSION } from '../lib/sessionGenerationLimiter.js';
 
 const router = express.Router();
+
+// Used to personalize self-serve generation when a student has no weakness
+// data yet (brand new account) — a plain rotation so the button still does
+// something useful rather than erroring out.
+const DEFAULT_ROTATION = [
+  { concept: 'Recursion', subconcept: 'Base Case Termination' },
+  { concept: 'Arrays', subconcept: 'Arrays, Two Pointers & Sliding Window' },
+  { concept: 'Linked Lists', subconcept: 'Linked Lists & Pointer Manipulation' },
+  { concept: 'Binary Trees', subconcept: 'Binary Trees & Tree Traversals' },
+  { concept: 'Sorting & Searching', subconcept: 'Sorting Algorithms & Their Complexities' },
+];
 
 // Course categories mirror the Learn window's CS_CURRICULUM subjects
 // (app/src/apps/learn/learnCoursesData.ts) by convention — same loose
@@ -484,13 +496,107 @@ async function seedDefaultChallenges() {
 }
 seedDefaultChallenges();
 
-// GET /api/code-lab/challenges
+// GET /api/code-lab/challenges — shared pool, plus this user's own personalized ones
 router.get('/challenges', requireAuth, async (req, res) => {
   try {
-    const result = await query('SELECT * FROM coding_challenges ORDER BY course_name ASC NULLS LAST, concept ASC, created_at ASC');
+    const result = await query(
+      `SELECT * FROM coding_challenges
+       WHERE generated_for_student_id IS NULL OR generated_for_student_id = $1
+       ORDER BY course_name ASC NULLS LAST, concept ASC, created_at ASC`,
+      [req.user.id]
+    );
     return res.json({ challenges: result.rows });
   } catch (err) {
     console.error('Get challenges error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/code-lab/generate — bounded (max MAX_PER_SESSION per login session),
+// self-serve challenge generation personalized to the student's own weak
+// concepts (their "academic graph": learning gaps + low-accuracy evidence).
+// Always lands in the separate "Generated" category, never mixed into the
+// shared curated pool.
+router.post('/generate', requireAuth, async (req, res) => {
+  try {
+    const studentId = req.user.id;
+    const sessionId = req.user.sessionId;
+
+    const remaining = getRemaining(sessionId, 'code-lab-generate');
+    if (remaining <= 0) {
+      return res.status(429).json({
+        error: `You've used all ${MAX_PER_SESSION} self-generated challenges for this session. Log out and back in to reset.`,
+        remaining: 0,
+      });
+    }
+
+    const requestedCount = Math.min(10, Math.max(1, parseInt(req.body.count, 10) || 3));
+    const count = Math.min(requestedCount, remaining);
+
+    const weakness = await getWeaknessProfile(studentId, 5);
+    const targets = weakness.length > 0
+      ? weakness
+      : DEFAULT_ROTATION.map((t) => ({ ...t, weight: 1, reason: 'foundational rotation (no weakness data yet)' }));
+
+    const generated = [];
+    const failed = [];
+    const MAX_RETRIES = 3;
+
+    for (let i = 0; i < count; i++) {
+      const target = targets[i % targets.length];
+      let success = false;
+      let lastErr = null;
+
+      for (let attempt = 1; attempt <= MAX_RETRIES && !success; attempt++) {
+        try {
+          const challenge = await generateCodingChallenge({
+            concept: target.concept,
+            subconcept: target.subconcept,
+            difficulty: 'medium',
+          });
+
+          const insertRes = await query(
+            `INSERT INTO coding_challenges
+             (concept, subconcept, title, description, initial_code, language, expected_behaviour, test_cases, diagnostic_tags, course_id, course_name, difficulty, generated_for_student_id)
+             VALUES ($1, $2, $3, $4, $5, 'python', $6, $7::jsonb, $8::jsonb, 'generated', 'Generated', $9, $10)
+             RETURNING *`,
+            [
+              challenge.concept,
+              challenge.subconcept,
+              challenge.title,
+              challenge.description,
+              challenge.initial_code,
+              challenge.expected_behaviour,
+              JSON.stringify(challenge.test_cases),
+              JSON.stringify(challenge.diagnostic_tags),
+              challenge.difficulty,
+              studentId,
+            ]
+          );
+
+          generated.push({ ...insertRes.rows[0], targeted_reason: target.reason || null });
+          success = true;
+        } catch (err) {
+          lastErr = err;
+          console.warn(`[CodeLab Generate] attempt ${attempt} failed for ${target.concept}/${target.subconcept}: ${err.message}`);
+        }
+      }
+
+      if (!success) {
+        failed.push({ concept: target.concept, subconcept: target.subconcept, error: lastErr?.message || 'unknown error' });
+      }
+    }
+
+    consume(sessionId, 'code-lab-generate', generated.length);
+
+    return res.status(201).json({
+      generated,
+      failed,
+      remaining: getRemaining(sessionId, 'code-lab-generate'),
+      targeted: targets.slice(0, count).map((t) => ({ concept: t.concept, subconcept: t.subconcept, reason: t.reason })),
+    });
+  } catch (err) {
+    console.error('Code lab generate error:', err);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

@@ -2,12 +2,21 @@ import express from 'express';
 import { query } from '../db/index.js';
 import { requireAuth } from '../middleware/auth.js';
 import { queue } from '../jobs/generationQueue.js';
-import { BLOOM_LEVELS, computeStudentBloomDistribution, computeClassBloomDistribution } from '../services/evidenceService.js';
+import { BLOOM_LEVELS, computeStudentBloomDistribution, computeClassBloomDistribution, getWeaknessProfile } from '../services/evidenceService.js';
+import { getRemaining, consume, MAX_PER_SESSION } from '../lib/sessionGenerationLimiter.js';
 
 const router = express.Router();
 
 const STUDENT_MAX_COUNT = 10; // bounded self-serve practice generation
 const TEACHER_MAX_COUNT = 20; // hard cap per spec
+
+// Same rotation Code Lab falls back to when a student has no weakness data yet.
+const DEFAULT_TARGET_ROTATION = [
+  { concept: 'Recursion', subconcept: 'Base Case Termination' },
+  { concept: 'Arrays', subconcept: 'Two Pointer Technique' },
+  { concept: 'Binary Search Trees', subconcept: 'Traversal Order' },
+  { concept: 'Dynamic Programming', subconcept: 'Memoization vs Tabulation' },
+];
 
 /** Scales/rounds an arbitrary count map onto BLOOM_LEVELS so it sums to exactly `count`. */
 function normalizeDistribution(rawDistribution, count) {
@@ -76,8 +85,6 @@ router.post('/', requireAuth, async (req, res) => {
   try {
     const isStudent = req.user.role === 'student';
     const {
-      concept,
-      subconcept,
       requested_count = 5,
       difficulty = 'medium',
       constraints = '',
@@ -88,15 +95,44 @@ router.post('/', requireAuth, async (req, res) => {
       bloom_distribution = null,     // { remember, understand, apply, analyze, evaluate, create }
       type_mix = null,               // { mcq_single, mcq_multi, descriptive }
       use_class_capability = false,  // teacher: structure bloom mix from class-average accuracy
-      target_student_id = null       // teacher: personalize for one student instead of the class
+      target_student_id = null,      // teacher: personalize for one student instead of the class
+      auto_target = false            // student: pick the weakest concept automatically instead of typing one
     } = req.body;
+    let { concept, subconcept } = req.body;
+
+    let autoTargetReason = null;
+
+    // Self-serve students can skip typing a concept entirely and let their own
+    // "academic graph" (learning gaps + low-accuracy evidence) pick one — the
+    // same weakness-ranking Code Lab's generator uses.
+    if (isStudent && (auto_target || !concept || !subconcept)) {
+      const weakness = await getWeaknessProfile(req.user.id, 1);
+      const target = weakness[0] || DEFAULT_TARGET_ROTATION[Math.floor(Math.random() * DEFAULT_TARGET_ROTATION.length)];
+      concept = target.concept;
+      subconcept = target.subconcept;
+      autoTargetReason = target.reason || 'foundational rotation (no weakness data yet)';
+    }
 
     if (!concept || !subconcept) {
       return res.status(400).json({ error: 'concept and subconcept are required' });
     }
 
+    // Bounded per-request count, further bounded by this login session's
+    // remaining self-serve generation budget (students only — teacher
+    // assessment generation is a different, already-reviewed workflow).
     const maxCount = isStudent ? STUDENT_MAX_COUNT : TEACHER_MAX_COUNT;
-    const count = Math.min(Math.max(1, parseInt(requested_count, 10) || 1), maxCount);
+    let count = Math.min(Math.max(1, parseInt(requested_count, 10) || 1), maxCount);
+
+    if (isStudent) {
+      const remaining = getRemaining(req.user.sessionId, 'practice-generate');
+      if (remaining <= 0) {
+        return res.status(429).json({
+          error: `You've used all ${MAX_PER_SESSION} self-generated practice questions for this session. Log out and back in to reset.`,
+          remaining: 0,
+        });
+      }
+      count = Math.min(count, remaining);
+    }
 
     // A student may only ever generate bounded self-serve practice for themselves —
     // never into the shared assessment pool, and never impersonating another student.
@@ -167,6 +203,7 @@ router.post('/', requireAuth, async (req, res) => {
     queue.enqueue({
       id: job.id,
       requester_id: req.user.id,
+      sessionId: req.user.sessionId,
       assessment_id,
       generated_for_student_id,
       requested_count: count,
@@ -180,6 +217,7 @@ router.post('/', requireAuth, async (req, res) => {
       bloom_distribution: distribution,
       type_mix: typeCounts,
       capability_basis: capabilityBasis,
+      targeted_concept: autoTargetReason ? { concept, subconcept, reason: autoTargetReason } : null,
       message: 'Generation job scheduled'
     });
   } catch (err) {

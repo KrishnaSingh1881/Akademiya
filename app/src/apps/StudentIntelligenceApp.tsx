@@ -200,7 +200,7 @@ export default function StudentIntelligenceApp() {
         /* ── TELEMETRY & STRUGGLE VIEW ── */
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Dashboard Numbers */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 12 }}>
+          <div className="stagger-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 12 }}>
             {/* Stat 1: Total Hours */}
             <div
               className="glass-panel"
@@ -348,7 +348,7 @@ export default function StudentIntelligenceApp() {
                 No active reading activity recorded for this student yet.
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div className="stagger-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {topics.map((t: any) => (
                   <div
                     key={t.id || t.topic_id}
@@ -468,7 +468,7 @@ export default function StudentIntelligenceApp() {
             No active learning gaps detected for {selectedStudent?.name || 'this student'}.
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto' }}>
+          <div className="stagger-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto' }}>
             {gaps.map((gap) => (
               <div
                 key={gap.id}

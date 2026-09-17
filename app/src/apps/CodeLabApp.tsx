@@ -103,6 +103,36 @@ export default function CodeLabApp() {
     });
   };
 
+  // ── AI-Generated Challenges (self-serve, bounded, personalized to weak concepts) ──
+  const [generatingChallenges, setGeneratingChallenges] = useState(false);
+  const [genChallengeCount, setGenChallengeCount] = useState(3);
+  const [genRemaining, setGenRemaining] = useState<number | null>(null);
+  const [genTargeted, setGenTargeted] = useState<Array<{ concept: string; subconcept: string; reason: string }>>([]);
+  const [genFailedCount, setGenFailedCount] = useState(0);
+  const [showChallengeGenerator, setShowChallengeGenerator] = useState(false);
+
+  const handleGenerateChallenges = async () => {
+    setGeneratingChallenges(true);
+    setGenFailedCount(0);
+    try {
+      const res = await axios.post('/api/code-lab/generate', { count: genChallengeCount });
+      const { generated, failed, remaining, targeted } = res.data;
+      setChallenges((prev) => [...generated, ...prev]);
+      setGenRemaining(remaining);
+      setGenTargeted(targeted || []);
+      setGenFailedCount(failed?.length || 0);
+    } catch (err: any) {
+      if (err.response?.status === 429) {
+        setGenRemaining(0);
+        alert(err.response.data.error);
+      } else {
+        alert(err.response?.data?.error || 'Failed to generate challenges');
+      }
+    } finally {
+      setGeneratingChallenges(false);
+    }
+  };
+
   // ── 1. Fetch Sandbox Files ──
   const fetchSandboxFiles = async (autoOpenDefault = false) => {
     setLoadingFiles(true);
@@ -991,10 +1021,79 @@ export default function CodeLabApp() {
         <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 14, flex: 1, minHeight: 0 }}>
           {/* Challenges List, grouped by Learn window course */}
           <div className="glass-panel" style={{ borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto' }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>
-              Curated Challenges ({challenges.length})
-            </span>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>
+                Curated Challenges ({challenges.length})
+              </span>
+              <button
+                type="button"
+                className="btn-secondary"
+                style={{ fontSize: 10, padding: '4px 8px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                onClick={() => setShowChallengeGenerator((v) => !v)}
+              >
+                <Sparkles size={11} /> {showChallengeGenerator ? 'Hide' : 'Generate More'}
+              </button>
+            </div>
+
+            {showChallengeGenerator && (
+              <div
+                className="fade-in-up"
+                style={{
+                  background: 'rgba(129, 140, 248, 0.06)',
+                  border: '1px solid rgba(129, 140, 248, 0.25)',
+                  borderRadius: 10,
+                  padding: 10,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                }}
+              >
+                <div style={{ fontSize: 10, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                  Generates new challenges under a separate <strong>Generated</strong> category, personalized to your
+                  own weak concepts (from your Academic Graph). Bounded to 10 per login session.
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input
+                    type="number"
+                    min={1}
+                    max={genRemaining ?? 10}
+                    value={genChallengeCount}
+                    onChange={(e) => setGenChallengeCount(Math.min(genRemaining ?? 10, Math.max(1, Number(e.target.value) || 1)))}
+                    style={{ width: 56, padding: '5px 8px', borderRadius: 6, background: 'var(--input-bg)', border: '1px solid var(--panel-border)', color: 'var(--text-primary)', fontSize: 11 }}
+                  />
+                  <button
+                    onClick={handleGenerateChallenges}
+                    disabled={generatingChallenges || genRemaining === 0}
+                    className="btn-primary"
+                    style={{ fontSize: 11, padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: 5, opacity: generatingChallenges || genRemaining === 0 ? 0.6 : 1 }}
+                  >
+                    <Bot size={12} /> {generatingChallenges ? 'Generating...' : 'Generate'}
+                  </button>
+                </div>
+                {generatingChallenges && (
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                    This validates each challenge by actually running a reference solution, so it can take up to a minute — please wait.
+                  </div>
+                )}
+                {genRemaining !== null && (
+                  <div style={{ fontSize: 10, color: genRemaining === 0 ? '#f87171' : 'var(--text-muted)' }}>
+                    {genRemaining} generation{genRemaining === 1 ? '' : 's'} left this session.
+                  </div>
+                )}
+                {genTargeted.length > 0 && (
+                  <div style={{ fontSize: 10, color: '#a5b4fc' }}>
+                    Targeted: {genTargeted.map((t) => `${t.concept} (${t.reason})`).join('; ')}
+                  </div>
+                )}
+                {genFailedCount > 0 && (
+                  <div style={{ fontSize: 10, color: '#f87171' }}>
+                    {genFailedCount} challenge{genFailedCount === 1 ? '' : 's'} failed to generate — try again.
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="stagger-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {challengesByCourse.map(([courseName, items]) => {
                 const isCollapsed = collapsedCourses.has(courseName);
                 return (

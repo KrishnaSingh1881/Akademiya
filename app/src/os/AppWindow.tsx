@@ -1,7 +1,10 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Rnd } from 'react-rnd';
 import WindowTitleBar from './components/WindowTitleBar';
 import { useOSStore, type WindowState } from './store/useOSStore';
+
+const MINIMIZE_ANIM_MS = 220;
+const RESIZE_ANIM_MS = 280;
 
 interface AppWindowProps {
   window: WindowState;
@@ -50,7 +53,44 @@ export default function AppWindow({ window: win, children }: AppWindowProps) {
   const { focusWindow, updatePosition, updateSize, maximizeWindow, unmaximizeWindow } = useOSStore();
   const rndRef = useRef<Rnd>(null);
 
-  if (win.isMinimized) {
+  // Keep the window mounted for a beat after it's minimized so the
+  // scale-down-into-the-dock animation can actually play before it vanishes.
+  const [isPlayingMinimize, setIsPlayingMinimize] = useState(false);
+  const [reallyHidden, setReallyHidden] = useState(false);
+  const wasMinimized = useRef(win.isMinimized);
+
+  useEffect(() => {
+    if (win.isMinimized && !wasMinimized.current) {
+      setIsPlayingMinimize(true);
+      const t = setTimeout(() => {
+        setIsPlayingMinimize(false);
+        setReallyHidden(true);
+      }, MINIMIZE_ANIM_MS);
+      wasMinimized.current = true;
+      return () => clearTimeout(t);
+    }
+    if (!win.isMinimized) {
+      wasMinimized.current = false;
+      setReallyHidden(false);
+    }
+  }, [win.isMinimized]);
+
+  // Briefly enable a CSS transition on size/position around a maximize /
+  // unmaximize toggle only — never during a manual drag or resize, where a
+  // transition would fight the mouse and feel laggy.
+  const [isAnimatingResize, setIsAnimatingResize] = useState(false);
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    setIsAnimatingResize(true);
+    const t = setTimeout(() => setIsAnimatingResize(false), RESIZE_ANIM_MS);
+    return () => clearTimeout(t);
+  }, [win.isMaximized]);
+
+  if (win.isMinimized && reallyHidden) {
     return null;
   }
 
@@ -59,9 +99,9 @@ export default function AppWindow({ window: win, children }: AppWindowProps) {
       ref={rndRef}
       size={{ width: win.size.width, height: win.size.height }}
       position={{ x: win.position.x, y: win.position.y }}
-      onDragStart={() => focusWindow(win.id)}
+      onDragStart={() => { setIsAnimatingResize(false); focusWindow(win.id); }}
       onDragStop={(_, d) => updatePosition(win.id, { x: d.x, y: d.y })}
-      onResizeStart={() => focusWindow(win.id)}
+      onResizeStart={() => { setIsAnimatingResize(false); focusWindow(win.id); }}
       onResizeStop={(_, __, ref, ___, position) => {
         updateSize(win.id, {
           width: parseInt(ref.style.width, 10),
@@ -76,30 +116,35 @@ export default function AppWindow({ window: win, children }: AppWindowProps) {
       enableResizing={!win.isMaximized}
       disableDragging={win.isMaximized}
       style={{ zIndex: win.zIndex }}
-      className="window-container"
+      className={`window-container${isAnimatingResize ? ' window-resizing-animated' : ''}${isPlayingMinimize ? ' window-minimizing' : ''}`}
       onMouseDown={() => focusWindow(win.id)}
     >
-      <WindowTitleBar
-        windowId={win.id}
-        title={win.title}
-        isMaximized={win.isMaximized}
-        onDoubleClick={() => {
-          if (win.isMaximized) unmaximizeWindow(win.id);
-          else maximizeWindow(win.id);
-        }}
-      />
-      <div
-        className={`window-content custom-scrollbar window-content-${win.appType}`}
-        style={{
-          color: 'var(--text-primary)',
-          ...(win.appType === 'code-lab'
-            ? { padding: '10px 12px', overflow: 'hidden' }
-            : {}),
-        }}
-      >
-        <WindowErrorBoundary>
-          {children}
-        </WindowErrorBoundary>
+      {/* The scale/fade entrance animation lives on this inner wrapper, never
+          on the Rnd root above — that element's `transform` is what react-rnd
+          rewrites on every drag frame, and a CSS animation there would fight it. */}
+      <div className="window-pop-inner">
+        <WindowTitleBar
+          windowId={win.id}
+          title={win.title}
+          isMaximized={win.isMaximized}
+          onDoubleClick={() => {
+            if (win.isMaximized) unmaximizeWindow(win.id);
+            else maximizeWindow(win.id);
+          }}
+        />
+        <div
+          className={`window-content custom-scrollbar window-content-${win.appType}`}
+          style={{
+            color: 'var(--text-primary)',
+            ...(win.appType === 'code-lab'
+              ? { padding: '10px 12px', overflow: 'hidden' }
+              : {}),
+          }}
+        >
+          <WindowErrorBoundary>
+            {children}
+          </WindowErrorBoundary>
+        </div>
       </div>
     </Rnd>
   );

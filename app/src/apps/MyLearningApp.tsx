@@ -160,7 +160,7 @@ export default function MyLearningApp() {
             No proctored assessments published by your teacher at this time.
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
+          <div className="stagger-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
             {assessments.map((assess) => (
               <div
                 key={assess.id}
@@ -289,7 +289,7 @@ export default function MyLearningApp() {
               </span>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div className="stagger-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {activeGaps.map((gap) => (
                 <div
                   key={gap.id}
@@ -357,7 +357,7 @@ export default function MyLearningApp() {
               </span>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div className="stagger-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {interventions.map((int: any) => {
                 const plan = typeof int.plan === 'string' ? JSON.parse(int.plan) : int.plan;
                 return (

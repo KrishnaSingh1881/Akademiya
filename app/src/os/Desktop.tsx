@@ -7,6 +7,7 @@ import Dock from './Dock';
 import WindowManager from './WindowManager';
 import ConsoleDebugger from './components/ConsoleDebugger';
 import AssessmentStudioModal from './components/AssessmentStudioModal';
+import DesktopWidgets from './widgets/DesktopWidgets';
 
 export default function Desktop() {
   const { user } = useAuth();
@@ -64,12 +65,20 @@ export default function Desktop() {
         ...desktopBgStyle,
       }}
     >
+      {/* Ambient floating accents, purely decorative and behind all chrome */}
+      <div className="ambient-orb" style={{ width: 460, height: 460, top: '-8%', left: '-6%', background: 'rgba(124, 58, 237, 0.14)' }} />
+      <div className="ambient-orb" style={{ width: 400, height: 400, bottom: '-10%', right: '-4%', background: 'rgba(236, 72, 153, 0.10)', animationDelay: '-7s' }} />
+
       {/* Top MenuBar */}
       <MenuBar
         isDebuggerOpen={showDebugger}
         onToggleDebugger={() => setShowDebugger((prev) => !prev)}
         onOpenCreateTest={() => setShowTestModal(true)}
       />
+
+      {/* Background widgets — sit behind every window (low z-index), like real
+          desktop widgets: visible on bare desktop, covered once you open an app. */}
+      <DesktopWidgets />
 
       {/* Main Desktop Space */}
       <div

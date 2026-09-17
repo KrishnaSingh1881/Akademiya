@@ -135,7 +135,7 @@ export default function ProgressLabApp() {
               <span>Active Study Telemetry &amp; Dashboard Analytics</span>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 12 }}>
+            <div className="stagger-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 12 }}>
               {/* Card 1: Total Active Study Hours */}
               <div
                 className="glass-panel"
@@ -300,7 +300,7 @@ export default function ProgressLabApp() {
                 No topic activity recorded yet. Open the <strong>Learn</strong> app to begin reading modules.
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div className="stagger-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {topics.map((t: any) => (
                   <div
                     key={t.id || t.topic_id}
@@ -471,7 +471,7 @@ export default function ProgressLabApp() {
                 No reassessed progress records yet. Complete an intervention practice set and reassessment to close the learning loop.
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div className="stagger-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {progressList.map((prog) => {
                   const delta = typeof prog.delta === 'string' ? JSON.parse(prog.delta) : prog.delta;
                   return (

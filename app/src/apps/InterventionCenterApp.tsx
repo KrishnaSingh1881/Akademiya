@@ -137,7 +137,7 @@ export default function InterventionCenterApp() {
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 12 }}>
                 Scaffolded Remedial Steps:
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div className="stagger-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {plan.steps?.map((st: any, sIdx: number) => (
                   <div
                     key={sIdx}

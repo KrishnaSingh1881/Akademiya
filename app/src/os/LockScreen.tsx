@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { Zap, UserCheck, GraduationCap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useOSStore } from './store/useOSStore';
@@ -69,10 +70,24 @@ export default function LockScreen() {
         background: 'var(--bg-desktop)',
         zIndex: 1000,
         padding: 20,
+        overflow: 'hidden',
       }}
     >
+      {/* Ambient floating orbs behind the card */}
       <div
+        className="ambient-orb"
+        style={{ width: 420, height: 420, top: '8%', left: '10%', background: 'rgba(124, 58, 237, 0.35)' }}
+      />
+      <div
+        className="ambient-orb"
+        style={{ width: 380, height: 380, bottom: '5%', right: '8%', background: 'rgba(236, 72, 153, 0.28)', animationDelay: '-6s' }}
+      />
+
+      <motion.div
         className="glass-panel"
+        initial={{ opacity: 0, y: 24, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         style={{
           width: '100%',
           maxWidth: 420,
@@ -82,11 +97,16 @@ export default function LockScreen() {
           display: 'flex',
           flexDirection: 'column',
           gap: 20,
+          position: 'relative',
+          zIndex: 1,
         }}
       >
         {/* Logo & Header */}
         <div style={{ textAlign: 'center' }}>
-          <div
+          <motion.div
+            initial={{ scale: 0.6, rotate: -8, opacity: 0 }}
+            animate={{ scale: 1, rotate: 0, opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.1, ease: [0.34, 1.56, 0.64, 1] }}
             style={{
               width: 56,
               height: 56,
@@ -100,7 +120,7 @@ export default function LockScreen() {
             }}
           >
             <img src={academiyaLogo} alt="Akademiya" style={{ width: 34, height: 34, objectFit: 'contain' }} />
-          </div>
+          </motion.div>
           <h1
             style={{
               fontSize: 22,
@@ -156,6 +176,7 @@ export default function LockScreen() {
         {/* Form Mode Selector */}
         <div
           style={{
+            position: 'relative',
             display: 'flex',
             background: 'rgba(0,0,0,0.2)',
             borderRadius: 10,
@@ -166,34 +187,52 @@ export default function LockScreen() {
             type="button"
             onClick={() => setIsRegister(false)}
             style={{
+              position: 'relative',
+              zIndex: 1,
               flex: 1,
               padding: '6px 0',
               borderRadius: 8,
               fontSize: 12,
               fontWeight: 600,
               border: 'none',
-              background: !isRegister ? 'rgba(255,255,255,0.15)' : 'transparent',
+              background: 'transparent',
               color: 'var(--text-primary)',
               cursor: 'pointer',
             }}
           >
+            {!isRegister && (
+              <motion.div
+                layoutId="lockscreen-tab-pill"
+                transition={{ type: 'spring', stiffness: 500, damping: 32 }}
+                style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.15)', borderRadius: 8, zIndex: -1 }}
+              />
+            )}
             Sign In
           </button>
           <button
             type="button"
             onClick={() => setIsRegister(true)}
             style={{
+              position: 'relative',
+              zIndex: 1,
               flex: 1,
               padding: '6px 0',
               borderRadius: 8,
               fontSize: 12,
               fontWeight: 600,
               border: 'none',
-              background: isRegister ? 'rgba(255,255,255,0.15)' : 'transparent',
+              background: 'transparent',
               color: 'var(--text-primary)',
               cursor: 'pointer',
             }}
           >
+            {isRegister && (
+              <motion.div
+                layoutId="lockscreen-tab-pill"
+                transition={{ type: 'spring', stiffness: 500, damping: 32 }}
+                style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.15)', borderRadius: 8, zIndex: -1 }}
+              />
+            )}
             Create Account
           </button>
         </div>
@@ -323,7 +362,7 @@ export default function LockScreen() {
             {loading ? 'Please wait...' : isRegister ? 'Register & Enter' : 'Sign In'}
           </button>
         </form>
-      </div>
+      </motion.div>
     </div>
   );
 }

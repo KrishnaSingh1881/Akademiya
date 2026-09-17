@@ -180,6 +180,13 @@ export const useOSStore = create<OSStore>((set, get) => ({
 
   maximizeWindow: (id: string) => {
     const { windows } = get();
+    // Rnd's `bounds="parent"` is Desktop.tsx's "Main Desktop Space" div, which
+    // is itself already offset 32px below the menu bar (top: 32, bottom: 0).
+    // Position is relative to THAT parent, so (0, 0) already sits right below
+    // the menu bar — adding another offset here double-counted it and left a
+    // gap at the top. The dock now auto-hides and only overlays transiently,
+    // so maximize no longer needs to permanently reserve space for it either.
+    const MENU_BAR_HEIGHT = 32;
     set({
       windows: windows.map((w) =>
         w.id === id
@@ -188,8 +195,8 @@ export const useOSStore = create<OSStore>((set, get) => ({
               isMaximized: true,
               prevPosition: { ...w.position },
               prevSize: { ...w.size },
-              position: { x: 0, y: 28 }, // below menu bar
-              size: { width: window.innerWidth, height: window.innerHeight - 28 - 72 }, // above dock
+              position: { x: 0, y: 0 },
+              size: { width: window.innerWidth, height: window.innerHeight - MENU_BAR_HEIGHT },
             }
           : w
       ),

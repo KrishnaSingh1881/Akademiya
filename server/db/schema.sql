@@ -174,8 +174,13 @@ CREATE TABLE IF NOT EXISTS coding_challenges (
   course_id VARCHAR(100),
   course_name VARCHAR(255),
   difficulty VARCHAR(50) DEFAULT 'medium',
+  -- Scopes a self-serve AI-generated challenge to the student it was
+  -- personalized for, same convention as questions.generated_for_student_id.
+  generated_for_student_id UUID REFERENCES users(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE coding_challenges ADD COLUMN IF NOT EXISTS generated_for_student_id UUID REFERENCES users(id) ON DELETE CASCADE;
 
 -- Idempotent for databases created before these columns existed.
 ALTER TABLE coding_challenges ADD COLUMN IF NOT EXISTS course_id VARCHAR(100);
@@ -212,6 +217,20 @@ CREATE TABLE IF NOT EXISTS attendance (
   CONSTRAINT unique_student_session UNIQUE (student_id, session_id)
 );
 
+-- 17b. daily_checkins — self-service "I studied today" button on the desktop
+-- Attendance widget. Deliberately decoupled from class_sessions: that table
+-- only has rows during a teacher-scheduled window, which won't exist most
+-- days, so a manual check-in needs its own path. The dashboard widgets
+-- endpoint unions this with `attendance` into one calendar/streak.
+CREATE TABLE IF NOT EXISTS daily_checkins (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  checkin_date DATE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT unique_student_checkin_date UNIQUE (student_id, checkin_date)
+);
+CREATE INDEX IF NOT EXISTS idx_daily_checkins_student ON daily_checkins(student_id);
+
 -- 18. student_topic_activity (Active webpage tracking & struggle intelligence)
 CREATE TABLE IF NOT EXISTS student_topic_activity (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -242,6 +261,7 @@ CREATE TABLE IF NOT EXISTS student_topic_activity (
 CREATE INDEX IF NOT EXISTS idx_questions_concept ON questions(concept, subconcept);
 CREATE INDEX IF NOT EXISTS idx_questions_generated_for_student ON questions(generated_for_student_id);
 CREATE INDEX IF NOT EXISTS idx_coding_challenges_course ON coding_challenges(course_id);
+CREATE INDEX IF NOT EXISTS idx_coding_challenges_generated_for_student ON coding_challenges(generated_for_student_id);
 CREATE INDEX IF NOT EXISTS idx_attempts_student ON attempts(student_id, question_id);
 CREATE INDEX IF NOT EXISTS idx_evidence_student_concept ON learning_evidence(student_id, concept);
 CREATE INDEX IF NOT EXISTS idx_gaps_student_status ON learning_gaps(student_id, status);

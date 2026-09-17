@@ -211,7 +211,7 @@ export default function LearnApp() {
             </span>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div className="stagger-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {filteredSubjects.map((subject) => {
               const isSubjectActive = subject.id === currentSubject.id;
               return (

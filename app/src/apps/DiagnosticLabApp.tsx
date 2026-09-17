@@ -142,7 +142,7 @@ export default function DiagnosticLabApp() {
             </div>
 
             {/* Targeted Probe Questions */}
-            <div className="glass-panel" style={{ borderRadius: 14, padding: 16 }}>
+            <div className="glass-panel stagger-fade-in" style={{ borderRadius: 14, padding: 16 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 10 }}>
                 Diagnostic Probe Blueprint:
               </div>

@@ -1,6 +1,7 @@
 import { query } from '../db/index.js';
 import { generateQuestion, generateEmbedding } from '../ai/modelAdapter.js';
 import { broadcastJobEvent } from '../ws.js';
+import { consume as consumeSessionBudget, getRemaining as getRemainingSessionBudget } from '../lib/sessionGenerationLimiter.js';
 
 // In-process bounded queue
 class GenerationQueue {
@@ -35,7 +36,8 @@ class GenerationQueue {
       requested_count,
       itemBlueprints,
       assessment_id = null,
-      generated_for_student_id = null
+      generated_for_student_id = null,
+      sessionId = null
     } = job;
 
     broadcastJobEvent(jobId, 'generation.started', { requested_count });
@@ -48,6 +50,7 @@ class GenerationQueue {
       const statusCheck = await query('SELECT status FROM generation_jobs WHERE id = $1', [jobId]);
       if (statusCheck.rows.length === 0 || statusCheck.rows[0].status === 'cancelled') {
         console.log(`[Queue] Job ${jobId} was cancelled by user.`);
+        if (generated_for_student_id && sessionId) consumeSessionBudget(sessionId, 'practice-generate', generatedCount);
         broadcastJobEvent(jobId, 'generation.cancelled', { generated_count: generatedCount });
         return;
       }
@@ -172,9 +175,16 @@ class GenerationQueue {
       [jobId]
     );
 
+    let sessionRemaining = null;
+    if (generated_for_student_id && sessionId) {
+      consumeSessionBudget(sessionId, 'practice-generate', generatedCount);
+      sessionRemaining = getRemainingSessionBudget(sessionId, 'practice-generate');
+    }
+
     broadcastJobEvent(jobId, 'generation.completed', {
       total_generated: generatedCount,
-      requested_count
+      requested_count,
+      session_remaining: sessionRemaining
     });
   }
 }

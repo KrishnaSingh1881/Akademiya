@@ -625,3 +625,207 @@ html[data-font-scale="large"] {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
 }
+
+/* ==========================================================================
+   Motion System — keyframes + utility classes used across every app.
+   Several of these classNames (animate-spin, animate-pulse, pulse-dot) were
+   already referenced by components but never defined, so those animations
+   were silently inert; defining them here brings every existing call site
+   to life with no component changes required.
+   ========================================================================== */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Opacity-only: react-rnd/react-draggable position this exact element via an
+   inline `transform: translate(x, y)` on every drag frame. An `animation`
+   with `fill-mode: both` that also touches `transform` would "hold" its own
+   last-keyframe transform as a standing override on the property even after
+   finishing, indefinitely fighting every subsequent inline transform update
+   from dragging — which is exactly what made windows stop being draggable.
+   Scale/translate entrance flourish lives on the inner `.window-pop-inner`
+   wrapper instead, which react-rnd never touches. */
+@keyframes windowPopIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes windowContentPopIn {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.window-pop-inner {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  animation: windowContentPopIn 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes pulseRing {
+  0%   { opacity: 0.55; transform: scale(1); }
+  70%  { opacity: 0; transform: scale(2.2); }
+  100% { opacity: 0; transform: scale(2.2); }
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.45; transform: scale(0.85); }
+}
+
+@keyframes pulseSoft {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+
+@keyframes floatOrb {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(2%, -3%) scale(1.05); }
+  66%      { transform: translate(-2%, 2%) scale(0.97); }
+}
+
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position: 200% 0; }
+}
+
+.animate-spin {
+  animation: spin 0.9s linear infinite;
+  display: inline-flex;
+}
+
+.animate-pulse {
+  animation: pulseSoft 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.pulse-dot {
+  position: relative;
+  display: inline-flex;
+  animation: pulseDot 1.8s ease-in-out infinite;
+  color: #34d399;
+}
+
+.pulse-dot::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  animation: pulseRing 1.8s cubic-bezier(0.2, 0.7, 0.4, 1) infinite;
+  pointer-events: none;
+}
+
+.fade-in {
+  animation: fadeIn 0.35s ease both;
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.scale-in {
+  animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Apply to a list wrapper; children get staggered via nth-child so no inline
+   per-item delay math is needed. Falls back gracefully past the 12th item
+   (they all share the last stagger step rather than growing unbounded). */
+.stagger-fade-in > * {
+  animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.stagger-fade-in > *:nth-child(1)  { animation-delay: 0ms; }
+.stagger-fade-in > *:nth-child(2)  { animation-delay: 35ms; }
+.stagger-fade-in > *:nth-child(3)  { animation-delay: 70ms; }
+.stagger-fade-in > *:nth-child(4)  { animation-delay: 105ms; }
+.stagger-fade-in > *:nth-child(5)  { animation-delay: 140ms; }
+.stagger-fade-in > *:nth-child(6)  { animation-delay: 175ms; }
+.stagger-fade-in > *:nth-child(7)  { animation-delay: 210ms; }
+.stagger-fade-in > *:nth-child(8)  { animation-delay: 245ms; }
+.stagger-fade-in > *:nth-child(n+9) { animation-delay: 280ms; }
+
+.shimmer-loading {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(255, 255, 255, 0.10) 50%,
+    rgba(255, 255, 255, 0.04) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+.ambient-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  pointer-events: none;
+  animation: floatOrb 14s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Window chrome pops in smoothly on open instead of appearing instantly. */
+.window-container {
+  animation: windowPopIn 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.window-container.window-closing {
+  animation: windowPopIn 200ms cubic-bezier(0.4, 0, 1, 1) reverse both;
+}
+
+.window-container.window-minimizing {
+  animation: windowMinimize 220ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+@keyframes windowMinimize {
+  from { opacity: 1; transform: scale(1) translateY(0); }
+  to   { opacity: 0; transform: scale(0.35) translateY(45vh); }
+}
+
+.window-container.window-resizing-animated {
+  transition:
+    width 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    height 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    left 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    top 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Press feedback on the two global button primitives. */
+.btn-primary:active,
+.btn-secondary:active {
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin,
+  .animate-pulse,
+  .pulse-dot,
+  .pulse-dot::after,
+  .fade-in,
+  .fade-in-up,
+  .scale-in,
+  .stagger-fade-in > *,
+  .shimmer-loading,
+  .ambient-orb,
+  .window-container,
+  .window-container.window-closing,
+  .window-container.window-minimizing,
+  .window-pop-inner {
+    animation: none !important;
+  }
+  .window-container.window-resizing-animated {
+    transition: none !important;
+  }
+}

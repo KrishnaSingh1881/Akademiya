@@ -53,9 +53,12 @@ export default function PracticeLabApp() {
   const [genSubconcept, setGenSubconcept] = useState('');
   const [genCount, setGenCount] = useState(6);
   const [genIncludeDescriptive, setGenIncludeDescriptive] = useState(true);
+  const [genAutoTarget, setGenAutoTarget] = useState(true);
   const [generatingPractice, setGeneratingPractice] = useState(false);
   const [genProgress, setGenProgress] = useState<{ current: number; total: number } | null>(null);
   const [genCapability, setGenCapability] = useState<{ accuracy: number | null } | null>(null);
+  const [genTargetedConcept, setGenTargetedConcept] = useState<{ concept: string; subconcept: string; reason: string } | null>(null);
+  const [genRemaining, setGenRemaining] = useState<number | null>(null);
   const [showGenerator, setShowGenerator] = useState(false);
 
   // Assigned Assessments state
@@ -135,13 +138,14 @@ export default function PracticeLabApp() {
   // own evidence (weak concepts skew toward Remember/Understand/Apply, strong ones
   // toward Analyze/Evaluate/Create), and covers all six levels across the batch.
   const handleGeneratePractice = async () => {
-    if (!genConcept.trim() || !genSubconcept.trim()) {
-      alert('Enter a concept and subconcept to generate targeted practice for.');
+    if (!genAutoTarget && (!genConcept.trim() || !genSubconcept.trim())) {
+      alert('Enter a concept and subconcept, or enable "Target my weakest concept".');
       return;
     }
     setGeneratingPractice(true);
     setGenProgress({ current: 0, total: genCount });
     setGenCapability(null);
+    setGenTargetedConcept(null);
 
     try {
       const typeMix = genIncludeDescriptive
@@ -152,13 +156,15 @@ export default function PracticeLabApp() {
         : { mcq_single: genCount };
 
       const jobRes = await axios.post('/api/generation-jobs', {
-        concept: genConcept.trim(),
-        subconcept: genSubconcept.trim(),
+        ...(genAutoTarget
+          ? { auto_target: true }
+          : { concept: genConcept.trim(), subconcept: genSubconcept.trim() }),
         requested_count: genCount,
         type_mix: typeMix,
       });
 
       setGenCapability(jobRes.data.capability_basis || null);
+      setGenTargetedConcept(jobRes.data.targeted_concept || null);
       const newJobId = jobRes.data.job_id;
 
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -174,6 +180,7 @@ export default function PracticeLabApp() {
             setQuestions((prev) => [data.question, ...prev]);
           } else if (data.type === 'generation.completed' || data.type === 'generation.cancelled') {
             setGeneratingPractice(false);
+            if (typeof data.session_remaining === 'number') setGenRemaining(data.session_remaining);
             socket.close();
             fetchPracticeQuestions();
           }
@@ -183,6 +190,9 @@ export default function PracticeLabApp() {
       };
       socket.onerror = () => setGeneratingPractice(false);
     } catch (err: any) {
+      if (err.response?.status === 429) {
+        setGenRemaining(0);
+      }
       alert(err.response?.data?.error || 'Failed to start practice generation');
       setGeneratingPractice(false);
     }
@@ -1045,30 +1055,46 @@ export default function PracticeLabApp() {
               <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                   AI generates a bounded set of practice questions across all six Bloom levels, personalized to your
-                  own recent accuracy on this concept — covering MCQ and, optionally, descriptive (free-text) questions.
+                  own recent accuracy — covering MCQ and, optionally, descriptive (free-text) questions. Bounded to 10
+                  self-generated questions per login session.
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 100px', gap: 8 }}>
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer' }}>
                   <input
-                    type="text"
-                    placeholder="Concept (e.g. Recursion)"
-                    value={genConcept}
-                    onChange={(e) => setGenConcept(e.target.value)}
-                    style={{ padding: '8px 10px', borderRadius: 8, background: 'var(--input-bg)', border: '1px solid var(--panel-border)', color: 'var(--text-primary)', fontSize: 12 }}
+                    type="checkbox"
+                    checked={genAutoTarget}
+                    onChange={(e) => setGenAutoTarget(e.target.checked)}
+                    style={{ accentColor: '#6366f1' }}
                   />
-                  <input
-                    type="text"
-                    placeholder="Subconcept (e.g. Base Case Termination)"
-                    value={genSubconcept}
-                    onChange={(e) => setGenSubconcept(e.target.value)}
-                    style={{ padding: '8px 10px', borderRadius: 8, background: 'var(--input-bg)', border: '1px solid var(--panel-border)', color: 'var(--text-primary)', fontSize: 12 }}
-                  />
+                  Target my weakest concept automatically (from my Academic Graph)
+                </label>
+
+                <div style={{ display: 'grid', gridTemplateColumns: genAutoTarget ? '100px' : '1fr 1fr 100px', gap: 8 }}>
+                  {!genAutoTarget && (
+                    <>
+                      <input
+                        type="text"
+                        placeholder="Concept (e.g. Recursion)"
+                        value={genConcept}
+                        onChange={(e) => setGenConcept(e.target.value)}
+                        style={{ padding: '8px 10px', borderRadius: 8, background: 'var(--input-bg)', border: '1px solid var(--panel-border)', color: 'var(--text-primary)', fontSize: 12 }}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Subconcept (e.g. Base Case Termination)"
+                        value={genSubconcept}
+                        onChange={(e) => setGenSubconcept(e.target.value)}
+                        style={{ padding: '8px 10px', borderRadius: 8, background: 'var(--input-bg)', border: '1px solid var(--panel-border)', color: 'var(--text-primary)', fontSize: 12 }}
+                      />
+                    </>
+                  )}
                   <input
                     type="number"
                     min={1}
-                    max={10}
+                    max={genRemaining ?? 10}
                     value={genCount}
-                    onChange={(e) => setGenCount(Math.min(10, Math.max(1, Number(e.target.value) || 1)))}
-                    title="Question count (max 10)"
+                    onChange={(e) => setGenCount(Math.min(genRemaining ?? 10, Math.max(1, Number(e.target.value) || 1)))}
+                    title="Question count (max 10 per session)"
                     style={{ padding: '8px 10px', borderRadius: 8, background: 'var(--input-bg)', border: '1px solid var(--panel-border)', color: 'var(--text-primary)', fontSize: 12 }}
                   />
                 </div>
@@ -1084,13 +1110,25 @@ export default function PracticeLabApp() {
                   </label>
                   <button
                     onClick={handleGeneratePractice}
-                    disabled={generatingPractice}
+                    disabled={generatingPractice || genRemaining === 0}
                     className="btn-primary"
-                    style={{ fontSize: 12, padding: '7px 16px', display: 'inline-flex', alignItems: 'center', gap: 6, opacity: generatingPractice ? 0.6 : 1 }}
+                    style={{ fontSize: 12, padding: '7px 16px', display: 'inline-flex', alignItems: 'center', gap: 6, opacity: generatingPractice || genRemaining === 0 ? 0.6 : 1 }}
                   >
                     <Zap size={13} /> {generatingPractice ? 'Generating...' : `Generate ${genCount} Questions`}
                   </button>
                 </div>
+
+                {genRemaining !== null && (
+                  <div style={{ fontSize: 10, color: genRemaining === 0 ? '#f87171' : 'var(--text-muted)' }}>
+                    {genRemaining} generation{genRemaining === 1 ? '' : 's'} left this session.
+                  </div>
+                )}
+
+                {genTargetedConcept && (
+                  <div style={{ fontSize: 11, color: '#a5b4fc' }}>
+                    Targeted: {genTargetedConcept.concept} — {genTargetedConcept.subconcept} ({genTargetedConcept.reason})
+                  </div>
+                )}
 
                 {genCapability && (
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
@@ -1127,7 +1165,7 @@ export default function PracticeLabApp() {
             <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>
               Open Practice Questions ({questions.length})
             </span>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div className="stagger-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {questions.map((q) => {
                 const isSelected = selectedQuestion?.id === q.id;
                 return (
@@ -1253,6 +1291,7 @@ export default function PracticeLabApp() {
 
                 {lastResult && selectedQuestion.type === 'descriptive' && lastResult.evaluation?.grading_details && (
                   <div
+                    className="scale-in"
                     style={{
                       padding: 12,
                       borderRadius: 8,
@@ -1284,6 +1323,7 @@ export default function PracticeLabApp() {
 
                 {lastResult && selectedQuestion.type !== 'descriptive' && (
                   <div
+                    className="scale-in"
                     style={{
                       padding: 12,
                       borderRadius: 8,

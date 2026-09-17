@@ -236,3 +236,63 @@ export async function getStudentGapsWithEvidence(studentId) {
 
   return enrichedGaps;
 }
+
+/**
+ * A ranked list of concept/subconcept pairs this student is weakest in,
+ * combining confirmed/emerging learning gaps (strongest signal) with recent
+ * evidence that hasn't crossed the gap threshold yet but still skews
+ * incorrect. Used to personalize AI generation (Code Lab challenges, Practice
+ * Lab questions) toward what the student actually needs practice on, rather
+ * than a manually-typed topic — the "academic graph" data driving both.
+ */
+export async function getWeaknessProfile(studentId, limit = 5) {
+  const gapsRes = await query(
+    `SELECT concept, subconcept, status, updated_at
+     FROM learning_gaps
+     WHERE student_id = $1 AND status IN ('emerging', 'confirmed')
+     ORDER BY updated_at DESC`,
+    [studentId]
+  );
+
+  const evidenceRes = await query(
+    `SELECT concept, subconcept,
+            COUNT(*) FILTER (WHERE result = 'incorrect')::float / COUNT(*) AS incorrect_ratio,
+            COUNT(*) AS total,
+            MAX(created_at) AS last_seen
+     FROM learning_evidence
+     WHERE student_id = $1
+     GROUP BY concept, subconcept
+     HAVING COUNT(*) >= 2
+     ORDER BY incorrect_ratio DESC, last_seen DESC`,
+    [studentId]
+  );
+
+  const byKey = new Map();
+  const keyOf = (concept, subconcept) => `${concept}::${subconcept}`;
+
+  for (const gap of gapsRes.rows) {
+    const key = keyOf(gap.concept, gap.subconcept);
+    byKey.set(key, {
+      concept: gap.concept,
+      subconcept: gap.subconcept,
+      weight: gap.status === 'confirmed' ? 3 : 2,
+      reason: `${gap.status} learning gap`,
+    });
+  }
+
+  for (const row of evidenceRes.rows) {
+    const key = keyOf(row.concept, row.subconcept);
+    if (byKey.has(key)) continue; // already weighted higher via an actual gap
+    if (row.incorrect_ratio < 0.4) continue; // not actually weak, just noisy
+    byKey.set(key, {
+      concept: row.concept,
+      subconcept: row.subconcept,
+      weight: 1,
+      reason: `${Math.round(row.incorrect_ratio * 100)}% incorrect over ${row.total} recent attempts`,
+    });
+  }
+
+  return Array.from(byKey.values())
+    .sort((a, b) => b.weight - a.weight)
+    .slice(0, limit);
+}

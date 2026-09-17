@@ -12,6 +12,7 @@
 
 import axios from 'axios';
 import { extractJSON } from '../lib/aiOutput.js';
+import { runLocally } from '../lib/localRunner.js';
 import { FALLBACK_QUESTIONS, FALLBACK_DIAGNOSTICS, FALLBACK_PLANS, buildFallbackDescriptive } from './fallbackPool.js';
 
 const LMSTUDIO_BASE_URL = process.env.LMSTUDIO_BASE_URL || 'http://localhost:1234/v1';
@@ -260,6 +261,90 @@ export async function generateQuestion(blueprint) {
       source: 'ai'
     };
   }
+}
+
+/**
+ * Generates one auto-graded Code Lab challenge (Python, stdin/stdout).
+ *
+ * AI output is never trusted for correctness the way an MCQ's schema alone
+ * can be validated: instead of asking the model to also invent
+ * "expected_output" values (which it can simply get wrong), it is asked for
+ * a complete, correct `reference_solution` alongside a deliberately
+ * incomplete `initial_code` stub. The reference solution is then actually
+ * EXECUTED locally against each test input via the same sandboxed runner
+ * Code Lab submissions use, and its real stdout becomes the test case's
+ * expected_output — so a generated challenge can never ship with an
+ * internally-inconsistent answer key. Throws on any validation failure; the
+ * caller (the bounded retry loop in the /generate route) decides what to do.
+ */
+export async function generateCodingChallenge({ concept, subconcept, difficulty = 'medium', constraints = '' }) {
+  const prompt = `You are an expert computer science educator building an auto-graded coding exercise for a browser IDE.
+
+Blueprint:
+- Concept: ${concept}
+- Subconcept: ${subconcept}
+- Difficulty: ${difficulty}
+${constraints ? `- Constraints: ${constraints}` : ''}
+
+Design ONE self-contained Python exercise that reads input via sys.stdin and prints output via print().
+You must provide BOTH an incomplete starter (with the core logic left as a TODO the student must implement)
+AND a complete, correct reference solution using the EXACT SAME input-parsing and output format as the starter
+— they must be interchangeable except for the missing logic.
+
+Respond ONLY with valid JSON:
+{
+  "title": "short challenge title",
+  "description": "1-2 sentence task description explaining the input/output format and the goal",
+  "initial_code": "python starter code: full stdin parsing already wired up, plus exactly one clearly marked # TODO for the core logic. Must NOT already solve the task.",
+  "reference_solution": "a complete, correct python solution solving the task, using the identical stdin/print format as initial_code",
+  "expected_behaviour": "one-line summary of what correct output looks like",
+  "diagnostic_tags": ["short_snake_case_tag", "..."],
+  "test_case_inputs": ["raw stdin value 1", "raw stdin value 2", "raw stdin value 3 (an edge case)"]
+}`;
+
+  const raw = await chatComplete(prompt, { json: true, temperature: 0.7 });
+  const parsed = extractJSON(raw);
+
+  if (
+    !parsed?.title ||
+    !parsed?.description ||
+    !parsed?.initial_code ||
+    !parsed?.reference_solution ||
+    !Array.isArray(parsed?.test_case_inputs) ||
+    parsed.test_case_inputs.length < 2
+  ) {
+    throw new Error('AI output did not match required coding-challenge schema');
+  }
+  if (!/TODO/i.test(parsed.initial_code)) {
+    throw new Error('initial_code has no TODO marker — likely not a genuine incomplete stub');
+  }
+  if (parsed.initial_code.trim() === parsed.reference_solution.trim()) {
+    throw new Error('initial_code is identical to reference_solution — gives away the answer');
+  }
+
+  // Ground truth comes from actually running the reference solution, never
+  // from whatever output value the model claims.
+  const test_cases = [];
+  for (let i = 0; i < parsed.test_case_inputs.length; i++) {
+    const input = String(parsed.test_case_inputs[i]);
+    const result = await runLocally('python', parsed.reference_solution, input);
+    if (result.exitCode !== 0 || !result.stdout || !result.stdout.trim()) {
+      throw new Error(`Reference solution failed self-check on test case ${i + 1}: ${(result.stderr || 'empty output').slice(0, 200)}`);
+    }
+    test_cases.push({ input, expected_output: result.stdout.trim(), is_hidden: i >= 1 });
+  }
+
+  return {
+    concept,
+    subconcept,
+    difficulty,
+    title: parsed.title,
+    description: parsed.description,
+    initial_code: parsed.initial_code,
+    expected_behaviour: parsed.expected_behaviour || 'Produces the correct output for each test case.',
+    test_cases,
+    diagnostic_tags: Array.isArray(parsed.diagnostic_tags) ? parsed.diagnostic_tags : [],
+  };
 }
 
 export async function generateDiagnostic(gap) {
