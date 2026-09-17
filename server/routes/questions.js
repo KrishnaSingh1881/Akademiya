@@ -110,6 +110,53 @@ router.get('/assessments/:id/integrity-report', requireAuth, async (req, res) =>
 });
 
 
+// Aggregate a single student's integrity violations across every assessment they've
+// taken — used by the Academic Graph (teacher's Student Intelligence view, and the
+// student's own Progress Lab view of their own record).
+router.get('/students/:student_id/integrity-summary', requireAuth, async (req, res) => {
+  try {
+    const studentId = req.params.student_id;
+    const isSelf = req.user.id === studentId;
+    if (!isSelf && req.user.role !== 'teacher') {
+      return res.status(403).json({ error: 'Forbidden: can only view your own integrity summary' });
+    }
+    const result = await query(
+      `SELECT ie.assessment_id, a.title as assessment_title, ie.event_type, COUNT(*) as count
+       FROM integrity_events ie
+       JOIN assessments a ON a.id = ie.assessment_id
+       WHERE ie.student_id = $1
+       GROUP BY ie.assessment_id, a.title, ie.event_type
+       ORDER BY a.title ASC`,
+      [studentId]
+    );
+
+    const byAssessment = new Map();
+    for (const row of result.rows) {
+      if (!byAssessment.has(row.assessment_id)) {
+        byAssessment.set(row.assessment_id, {
+          assessment_id: row.assessment_id,
+          assessment_title: row.assessment_title,
+          violation_count: 0,
+          event_type_counts: {}
+        });
+      }
+      const entry = byAssessment.get(row.assessment_id);
+      const count = parseInt(row.count, 10);
+      entry.violation_count += count;
+      entry.event_type_counts[row.event_type] = count;
+    }
+
+    const byAssessmentList = Array.from(byAssessment.values());
+    return res.json({
+      total_violations: byAssessmentList.reduce((sum, a) => sum + a.violation_count, 0),
+      by_assessment: byAssessmentList
+    });
+  } catch (err) {
+    console.error('Get student integrity summary error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Teacher seeds an MCQ question
 router.post('/seed', requireAuth, requireTeacher, async (req, res) => {
   try {

@@ -135,6 +135,34 @@ export const FALLBACK_DIAGNOSTICS = [
   }
 ];
 
+/**
+ * Generic, concept-agnostic descriptive question used only when BOTH AI
+ * providers (LM Studio + Gemini) are unreachable. Keeps the descriptive path
+ * resilient without pretending to have curated content for every concept.
+ */
+export function buildFallbackDescriptive(concept, subconcept, bloomLevel = 'understand', difficulty = 'medium') {
+  const BLOOM_PROMPTS = {
+    remember: `State the definition of ${subconcept || concept} in ${concept}.`,
+    understand: `In your own words, explain how ${subconcept || concept} works within ${concept}.`,
+    apply: `Describe how you would use ${subconcept || concept} to solve a practical problem in ${concept}.`,
+    analyze: `Break down ${subconcept || concept} into its key steps or components and explain how they interact.`,
+    evaluate: `Judge whether ${subconcept || concept} is the right approach for a given scenario in ${concept}, and justify your reasoning.`,
+    create: `Propose a new example or design that demonstrates ${subconcept || concept} in ${concept}.`
+  };
+
+  return {
+    concept,
+    subconcept,
+    type: 'descriptive',
+    bloom_level: bloomLevel,
+    difficulty,
+    statement: BLOOM_PROMPTS[bloomLevel] || BLOOM_PROMPTS.understand,
+    reference_answer: `A complete answer explains ${subconcept || concept} accurately, covers its core mechanism, and connects it back to ${concept}.`,
+    key_points: [`Core mechanism of ${subconcept || concept}`, `Connection to ${concept}`],
+    source: 'ai'
+  };
+}
+
 export const FALLBACK_PLANS = [
   {
     title: 'Recursion Foundation & Base-Case Mastery',

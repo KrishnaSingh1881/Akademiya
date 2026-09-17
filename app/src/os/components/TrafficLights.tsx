@@ -1,5 +1,5 @@
 import React from 'react';
-import { AppX, AppMinus, AppPlus } from '@keyline-icons/react';
+import { Minus, Square, Copy, X } from 'lucide-react';
 import { useOSStore } from '../store/useOSStore';
 
 interface TrafficLightsProps {
@@ -11,38 +11,24 @@ export default function TrafficLights({ windowId, isMaximized }: TrafficLightsPr
   const { closeWindow, minimizeWindow, maximizeWindow, unmaximizeWindow } = useOSStore();
 
   return (
-    <div className="traffic-lights-container">
-      {/* Close (Red) -> AppX */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          closeWindow(windowId);
-        }}
-        title="Close"
-        className="traffic-light traffic-light-red"
-        aria-label="Close Window"
-      >
-        <span className="traffic-light-icon">
-          <AppX width={13} height={13} strokeWidth={2.2} className="keyline-theme-icon" />
-        </span>
-      </button>
-
-      {/* Minimize (Yellow) -> AppMinus */}
+    <div
+      className="window-controls-container"
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      {/* 1. Minimize [-] */}
       <button
         onClick={(e) => {
           e.stopPropagation();
           minimizeWindow(windowId);
         }}
         title="Minimize"
-        className="traffic-light traffic-light-yellow"
+        className="window-control-btn window-control-minimize"
         aria-label="Minimize Window"
       >
-        <span className="traffic-light-icon">
-          <AppMinus width={13} height={13} strokeWidth={2.2} className="keyline-theme-icon" />
-        </span>
+        <Minus size={14} strokeWidth={2} />
       </button>
 
-      {/* Maximize/Restore (Green) -> AppPlus */}
+      {/* 2. Maximize / Restore [o] */}
       <button
         onClick={(e) => {
           e.stopPropagation();
@@ -50,15 +36,28 @@ export default function TrafficLights({ windowId, isMaximized }: TrafficLightsPr
           else maximizeWindow(windowId);
         }}
         title={isMaximized ? 'Restore' : 'Maximize'}
-        className="traffic-light traffic-light-green"
+        className="window-control-btn window-control-maximize"
         aria-label={isMaximized ? 'Restore Window' : 'Maximize Window'}
       >
-        <span className="traffic-light-icon">
-          <AppPlus width={13} height={13} strokeWidth={2.2} className="keyline-theme-icon" />
-        </span>
+        {isMaximized ? (
+          <Copy size={11} strokeWidth={2} />
+        ) : (
+          <Square size={12} strokeWidth={2} />
+        )}
+      </button>
+
+      {/* 3. Close [x] */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          closeWindow(windowId);
+        }}
+        title="Close"
+        className="window-control-btn window-control-close"
+        aria-label="Close Window"
+      >
+        <X size={15} strokeWidth={2} />
       </button>
     </div>
   );
 }
-
-

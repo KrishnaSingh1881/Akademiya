@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import {
+  Plus,
+  BarChart3,
+  Calendar,
+  Users,
+  CheckCircle2,
+  XCircle,
+  Shield,
+  Search,
+  User,
+} from 'lucide-react';
 import { useOSStore } from '../os/store/useOSStore';
 
 export default function ClassInsightsApp() {
@@ -38,59 +49,76 @@ export default function ClassInsightsApp() {
     fetchSessions();
   }, []);
 
-  useEffect(() => {
-    if (!selectedSessionId) return;
-    setLoadingRoster(true);
-    axios.get(`/api/attendance/session/${selectedSessionId}`)
-      .then(res => setSessionRoster(res.data))
-      .catch(console.error)
-      .finally(() => setLoadingRoster(false));
-  }, [selectedSessionId]);
-
   const handleCreateQuickSession = async () => {
     setCreatingSession(true);
     try {
       const now = new Date();
-      const end = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour session
+      const endTime = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour
       await axios.post('/api/attendance/sessions', {
-        title: `Live Lecture & Lab (${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`,
+        title: `Class Session — ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
         start_time: now.toISOString(),
-        end_time: end.toISOString()
+        end_time: endTime.toISOString(),
       });
       fetchSessions();
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to create session');
+    } catch (err) {
+      console.error(err);
     } finally {
       setCreatingSession(false);
     }
   };
 
+  const loadSessionRoster = (sessionId: string) => {
+    setSelectedSessionId(sessionId);
+    setLoadingRoster(true);
+    axios.get(`/api/attendance/session/${sessionId}`)
+      .then(res => setSessionRoster(res.data))
+      .catch(console.error)
+      .finally(() => setLoadingRoster(false));
+  };
+
+  useEffect(() => {
+    if (selectedSessionId) {
+      loadSessionRoster(selectedSessionId);
+    }
+  }, [selectedSessionId]);
 
   if (loading) {
-    return <div style={{ padding: 40, textAlign: 'center' }}>Loading class insights aggregation...</div>;
+    return (
+      <div style={{ padding: 30, textAlign: 'center', color: 'var(--text-secondary)' }}>
+        Loading Class Insights...
+      </div>
+    );
   }
 
-  const summary = data?.summary || {};
-  const concepts = data?.concepts || [];
+  const { summary = {}, concepts = [] } = data || {};
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
+    <div
+      style={{
+        padding: 24,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 16,
+        height: '100%',
+        boxSizing: 'border-box',
+        overflowY: 'auto',
+      }}
+    >
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--panel-border)', paddingBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <h2 style={{ fontSize: 18, fontWeight: 800 }}>Class Intelligence & Concept Health</h2>
-          <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-            Real-time class-wide aggregation of emerging and confirmed conceptual gaps.
+          <h2 style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.02em' }}>Class Insights</h2>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+            Class-wide conceptual gap analysis and deterministic auto-attendance
           </p>
         </div>
-
         <button
           onClick={() => window.dispatchEvent(new CustomEvent('akademiya-open-test-studio'))}
           className="btn-primary"
           style={{
             fontSize: 12,
             padding: '6px 14px',
-            display: 'flex',
+            display: 'inline-flex',
             alignItems: 'center',
             gap: 6,
             background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
@@ -99,7 +127,7 @@ export default function ClassInsightsApp() {
             boxShadow: '0 2px 8px rgba(168, 85, 247, 0.3)',
           }}
         >
-          <span>➕</span>
+          <Plus size={13} strokeWidth={2.5} />
           <span>Create / Generate Test</span>
         </button>
       </div>
@@ -109,16 +137,16 @@ export default function ClassInsightsApp() {
         <button
           onClick={() => setActiveTab('concepts')}
           className={activeTab === 'concepts' ? 'btn-primary' : 'btn-secondary'}
-          style={{ fontSize: 12, padding: '5px 14px' }}
+          style={{ fontSize: 12, padding: '5px 14px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
-          📊 Concept Health & Gaps
+          <BarChart3 size={13} strokeWidth={2} /> Concept Health & Gaps
         </button>
         <button
           onClick={() => { setActiveTab('attendance'); fetchSessions(); }}
           className={activeTab === 'attendance' ? 'btn-primary' : 'btn-secondary'}
-          style={{ fontSize: 12, padding: '5px 14px' }}
+          style={{ fontSize: 12, padding: '5px 14px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
-          📅 Deterministic Auto-Attendance ({sessions.filter(s => s.is_active).length} Active)
+          <Calendar size={13} strokeWidth={2} /> Deterministic Auto-Attendance ({sessions.filter(s => s.is_active).length} Active)
         </button>
       </div>
 
@@ -133,9 +161,9 @@ export default function ClassInsightsApp() {
                 onClick={handleCreateQuickSession}
                 disabled={creatingSession}
                 className="btn-primary"
-                style={{ fontSize: 10, padding: '4px 8px' }}
+                style={{ fontSize: 10, padding: '4px 8px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
               >
-                {creatingSession ? 'Starting...' : '➕ Start 1h Window'}
+                {creatingSession ? 'Starting...' : <><Plus size={11} strokeWidth={2.5} /> Start 1h Window</>}
               </button>
             </div>
 
@@ -173,8 +201,8 @@ export default function ClassInsightsApp() {
                       <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>
                         {new Date(sess.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(sess.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </div>
-                      <div style={{ fontSize: 11, color: 'var(--accent-light)', marginTop: 2 }}>
-                        👥 {sess.attended_count} attended
+                      <div style={{ fontSize: 11, color: 'var(--accent-light)', marginTop: 2, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <Users size={12} /> {sess.attended_count} attended
                       </div>
                     </div>
                   );
@@ -221,9 +249,13 @@ export default function ClassInsightsApp() {
                           <td style={{ padding: '10px 10px', color: 'var(--text-secondary)' }}>{st.student_email}</td>
                           <td style={{ padding: '10px 10px' }}>
                             {st.is_present ? (
-                              <span className="badge badge-resolved" style={{ fontSize: 10 }}>✓ Present</span>
+                              <span className="badge badge-resolved" style={{ fontSize: 10, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                                <CheckCircle2 size={10} /> Present
+                              </span>
                             ) : (
-                              <span className="badge badge-confirmed" style={{ fontSize: 10 }}>✗ Absent</span>
+                              <span className="badge badge-confirmed" style={{ fontSize: 10, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                                <XCircle size={10} /> Absent
+                              </span>
                             )}
                           </td>
                           <td style={{ padding: '10px 10px' }}>
@@ -268,7 +300,7 @@ export default function ClassInsightsApp() {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 20 }}>🛡️</span>
+              <Shield size={20} color="#818cf8" />
               <div>
                 <div style={{ fontSize: 13, fontWeight: 700 }}>Assessment Focus & Integrity Engine</div>
                 <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
@@ -281,7 +313,7 @@ export default function ClassInsightsApp() {
               className="btn-secondary"
               style={{ fontSize: 11, padding: '5px 12px', display: 'flex', alignItems: 'center', gap: 6 }}
             >
-              <span>🔍</span>
+              <Search size={12} />
               <span>View Integrity & Assessments</span>
             </button>
           </div>
@@ -318,7 +350,7 @@ export default function ClassInsightsApp() {
 
       {/* Concept Breakdown (rendered when concepts tab is active) */}
       {activeTab === 'concepts' && (
-        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="stagger-fade-in" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
         <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-secondary)' }}>
           Concepts Needing Attention ({concepts.length})
         </h3>
@@ -385,7 +417,9 @@ export default function ClassInsightsApp() {
                       cursor: 'pointer',
                     }}
                   >
-                    👤 {sg.student_name} ({sg.status})
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <User size={11} /> {sg.student_name} ({sg.status})
+                    </span>
                   </button>
                 ))}
               </div>

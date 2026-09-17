@@ -16,6 +16,9 @@ import insightRoutes from './routes/insights.js';
 import semanticRoutes from './routes/semantic.js';
 import settingsRoutes from './routes/settings.js';
 import attendanceRoutes from './routes/attendance.js';
+import activityRoutes from './routes/activity.js';
+import sandboxRoutes from './routes/sandbox.js';
+import dashboardRoutes from './routes/dashboard.js';
 import { setupWebSocket } from './ws.js';
 
 dotenv.config();
@@ -25,6 +28,15 @@ const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+
+// Anti-caching headers for browser security and back-navigation prevention
+app.use((req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Surrogate-Control', 'no-store');
+  next();
+});
 
 // ── Terminal Debugging: Colorized Request & Performance Logger ──
 app.use((req, res, next) => {
@@ -64,6 +76,9 @@ app.use('/api/insights', insightRoutes);
 app.use('/api/semantic', semanticRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/attendance', attendanceRoutes);
+app.use('/api/activity', activityRoutes);
+app.use('/api/sandbox', sandboxRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

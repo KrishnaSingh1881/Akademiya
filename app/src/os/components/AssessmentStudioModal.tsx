@@ -1,5 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import {
+  FileText,
+  X,
+  Zap,
+  PenTool,
+  BookOpen,
+  Radio,
+  Shield,
+  CheckCircle2,
+  Save,
+  AlertTriangle,
+  Search,
+  Eye,
+  Maximize,
+  Clipboard,
+  Check,
+} from 'lucide-react';
 
 interface AssessmentStudioModalProps {
   isOpen: boolean;
@@ -14,9 +31,31 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
   const [testTitle, setTestTitle] = useState('Recursion Mastery Assessment');
   const [concept, setConcept] = useState('Recursion');
   const [subconcept, setSubconcept] = useState('Base Case Termination');
-  const [requestedCount, setRequestedCount] = useState(4);
-  const [bloomLevel, setBloomLevel] = useState('apply');
+  const [requestedCount, setRequestedCount] = useState(6);
   const [difficulty, setDifficulty] = useState('medium');
+
+  // Bloom's Taxonomy spectrum + question-type mix controls
+  const BLOOM_LEVELS = ['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create'] as const;
+  const distributeEven = (count: number, n: number) => {
+    const base = Math.floor(count / n);
+    const remainder = count % n;
+    return Array.from({ length: n }, (_, i) => base + (i < remainder ? 1 : 0));
+  };
+  const [structureMode, setStructureMode] = useState<'class_capability' | 'manual'>('class_capability');
+  const [bloomCounts, setBloomCounts] = useState<Record<string, number>>(() =>
+    BLOOM_LEVELS.reduce((acc, level, i) => ({ ...acc, [level]: distributeEven(6, 6)[i] }), {})
+  );
+  const [includeDescriptive, setIncludeDescriptive] = useState(true);
+  const [descriptivePercent, setDescriptivePercent] = useState(30);
+
+  const handleRequestedCountChange = (value: number) => {
+    const clamped = Math.min(20, Math.max(1, value || 1));
+    setRequestedCount(clamped);
+    const evenSplit = distributeEven(clamped, BLOOM_LEVELS.length);
+    setBloomCounts(BLOOM_LEVELS.reduce((acc, level, i) => ({ ...acc, [level]: evenSplit[i] }), {}));
+  };
+
+  const bloomCountSum = Object.values(bloomCounts).reduce((a, b) => a + Number(b || 0), 0);
   const [generating, setGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState<{ current: number; total: number; pct: number } | null>(null);
   const [streamedQuestions, setStreamedQuestions] = useState<any[]>([]);
@@ -97,11 +136,25 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
       const newAssessmentId = assessRes.data.assessment.id;
 
       // 2. Launch Generation Job with assessment_id
+      const typeMix = includeDescriptive
+        ? {
+            mcq_single: Math.max(1, Math.round(requestedCount * (1 - descriptivePercent / 100))),
+            descriptive: Math.max(0, Math.round(requestedCount * (descriptivePercent / 100))),
+          }
+        : { mcq_single: requestedCount };
+
       const jobRes = await axios.post('/api/generation-jobs', {
         concept,
         subconcept,
         requested_count: Number(requestedCount),
+        difficulty,
         assessment_id: newAssessmentId,
+        type_mix: typeMix,
+        // Manual mode sends the teacher's exact per-level counts; otherwise the
+        // server structures the mix itself from class-wide accuracy on this concept.
+        ...(structureMode === 'manual'
+          ? { bloom_distribution: bloomCounts }
+          : { use_class_capability: true }),
       });
       const newJobId = jobRes.data.job_id;
       setJobId(newJobId);
@@ -121,9 +174,9 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
           const data = JSON.parse(event.data);
           if (data.type === 'generation.progress') {
             setGenerationProgress({
-              current: data.generated_count,
-              total: data.requested_count,
-              pct: Math.round((data.generated_count / data.requested_count) * 100)
+              current: data.current,
+              total: data.total,
+              pct: Math.round((data.current / data.total) * 100)
             });
           } else if (data.type === 'question.generated' && data.question) {
             setStreamedQuestions(prev => [...prev, data.question]);
@@ -184,7 +237,7 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
         difficulty: 'medium'
       });
 
-      setSeedSuccessMsg('🎉 Test & Question successfully seeded and published to student practice pool!');
+      setSeedSuccessMsg('Test & Question successfully seeded and published to student practice pool!');
       setManualStatement('');
       setOpt1('');
       setOpt2('');
@@ -264,7 +317,7 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 22 }}>📝</span>
+            <FileText size={22} color="#818cf8" />
             <div>
               <h2 style={{ fontSize: 17, fontWeight: 800 }}>Assessment Studio & Test Authoring</h2>
               <p style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
@@ -283,9 +336,12 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
               color: 'var(--text-secondary)',
               cursor: 'pointer',
               fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
-            ✕
+            <X size={16} />
           </button>
         </div>
 
@@ -302,23 +358,23 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
           <button
             onClick={() => setActiveTab('ai')}
             className={activeTab === 'ai' ? 'btn-primary' : 'btn-secondary'}
-            style={{ fontSize: 12, padding: '6px 14px' }}
+            style={{ fontSize: 12, padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
           >
-            ⚡ AI Test Generator (Streamed)
+            <Zap size={13} strokeWidth={2.2} /> AI Test Generator (Streamed)
           </button>
           <button
             onClick={() => setActiveTab('manual')}
             className={activeTab === 'manual' ? 'btn-primary' : 'btn-secondary'}
-            style={{ fontSize: 12, padding: '6px 14px' }}
+            style={{ fontSize: 12, padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
           >
-            ✍️ Manual Question Authoring
+            <PenTool size={13} strokeWidth={2.2} /> Manual Question Authoring
           </button>
           <button
             onClick={() => setActiveTab('list')}
             className={activeTab === 'list' ? 'btn-primary' : 'btn-secondary'}
-            style={{ fontSize: 12, padding: '6px 14px' }}
+            style={{ fontSize: 12, padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
           >
-            📚 Published Assessments ({assessments.length})
+            <BookOpen size={13} strokeWidth={2.2} /> Published Assessments ({assessments.length})
           </button>
         </div>
 
@@ -407,7 +463,7 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
                     min={1}
                     max={20}
                     value={requestedCount}
-                    onChange={(e) => setRequestedCount(Number(e.target.value))}
+                    onChange={(e) => handleRequestedCountChange(Number(e.target.value))}
                     style={{
                       width: '100%',
                       marginTop: 6,
@@ -419,32 +475,6 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
                       fontSize: 13,
                     }}
                   />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
-                    Bloom Cognitive Target
-                  </label>
-                  <select
-                    value={bloomLevel}
-                    onChange={(e) => setBloomLevel(e.target.value)}
-                    style={{
-                      width: '100%',
-                      marginTop: 6,
-                      padding: '8px 12px',
-                      borderRadius: 8,
-                      background: 'var(--input-bg)',
-                      border: '1px solid var(--panel-border)',
-                      color: 'var(--text-primary)',
-                      fontSize: 13,
-                    }}
-                  >
-                    <option value="remember" style={{ background: '#1e293b' }}>Remember</option>
-                    <option value="understand" style={{ background: '#1e293b' }}>Understand</option>
-                    <option value="apply" style={{ background: '#1e293b' }}>Apply</option>
-                    <option value="analyze" style={{ background: '#1e293b' }}>Analyze</option>
-                    <option value="evaluate" style={{ background: '#1e293b' }}>Evaluate</option>
-                  </select>
                 </div>
 
                 <div>
@@ -472,12 +502,129 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
                 </div>
               </div>
 
+              {/* Bloom's Taxonomy structuring + question type mix */}
+              <div
+                style={{
+                  background: 'rgba(129, 140, 248, 0.06)',
+                  border: '1px solid rgba(129, 140, 248, 0.25)',
+                  borderRadius: 12,
+                  padding: 14,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 12,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>Bloom's Taxonomy Structuring (all 6 levels)</div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button
+                      type="button"
+                      onClick={() => setStructureMode('class_capability')}
+                      className={structureMode === 'class_capability' ? 'btn-primary' : 'btn-secondary'}
+                      style={{ fontSize: 11, padding: '5px 10px' }}
+                    >
+                      Structure from Class Performance
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStructureMode('manual')}
+                      className={structureMode === 'manual' ? 'btn-primary' : 'btn-secondary'}
+                      style={{ fontSize: 11, padding: '5px 10px' }}
+                    >
+                      Manual Distribution
+                    </button>
+                  </div>
+                </div>
+
+                {structureMode === 'class_capability' ? (
+                  <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    The test is generated across all six Bloom levels (Remember → Create), weighted by this class's
+                    recent accuracy on <strong>{concept} — {subconcept || 'this subconcept'}</strong>. Weaker
+                    performance shifts more questions toward Remember/Understand/Apply; stronger performance shifts
+                    more toward Analyze/Evaluate/Create.
+                  </div>
+                ) : (
+                  <div>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(6, 1fr)',
+                        gap: 8,
+                      }}
+                    >
+                      {BLOOM_LEVELS.map((level) => (
+                        <div key={level}>
+                          <label style={{ fontSize: 10, textTransform: 'capitalize', color: 'var(--text-secondary)' }}>
+                            {level}
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            max={20}
+                            value={bloomCounts[level]}
+                            onChange={(e) =>
+                              setBloomCounts((prev) => ({ ...prev, [level]: Math.max(0, Number(e.target.value) || 0) }))
+                            }
+                            style={{
+                              width: '100%',
+                              marginTop: 4,
+                              padding: '6px 8px',
+                              borderRadius: 6,
+                              background: 'var(--input-bg)',
+                              border: '1px solid var(--panel-border)',
+                              color: 'var(--text-primary)',
+                              fontSize: 12,
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <div
+                      style={{
+                        marginTop: 6,
+                        fontSize: 11,
+                        color: bloomCountSum === requestedCount ? 'var(--text-muted)' : '#f87171',
+                      }}
+                    >
+                      Bloom counts total {bloomCountSum} / {requestedCount} question{requestedCount === 1 ? '' : 's'}
+                      {bloomCountSum !== requestedCount && ' — will be proportionally rescaled to match the count.'}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12 }}>
+                    <input
+                      type="checkbox"
+                      checked={includeDescriptive}
+                      onChange={(e) => setIncludeDescriptive(e.target.checked)}
+                      style={{ accentColor: '#6366f1' }}
+                    />
+                    Include descriptive (free-text) questions
+                  </label>
+                  {includeDescriptive && (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: 'var(--text-secondary)' }}>
+                      Descriptive share:
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={descriptivePercent}
+                        onChange={(e) => setDescriptivePercent(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
+                        style={{ width: 60, padding: '4px 6px', borderRadius: 6, background: 'var(--input-bg)', border: '1px solid var(--panel-border)', color: 'var(--text-primary)', fontSize: 11 }}
+                      />
+                      %
+                    </label>
+                  )}
+                </div>
+              </div>
+
               {/* Progress bar */}
               {generating && generationProgress && (
                 <div style={{ marginTop: 8 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
-                    <span style={{ color: '#38bdf8', fontWeight: 600 }}>
-                      ⚡ Streaming Question Generation over WebSocket...
+                    <span style={{ color: '#38bdf8', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <Radio size={13} className="animate-pulse" /> Streaming Question Generation over WebSocket...
                     </span>
                     <span>
                       {generationProgress.current} / {generationProgress.total} ({generationProgress.pct}%)
@@ -510,7 +657,7 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 20 }}>🛡️</span>
+                    <Shield size={20} color="#818cf8" />
                     <div>
                       <div style={{ fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
                         Anticheat & Exam Focus Mode
@@ -595,17 +742,17 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
                   onClick={handleStartAIGeneration}
                   disabled={generating}
                   className="btn-primary"
-                  style={{ padding: '10px 20px', fontSize: 13, opacity: generating ? 0.6 : 1 }}
+                  style={{ padding: '10px 20px', fontSize: 13, opacity: generating ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}
                 >
-                  {generating ? '⏳ Generating Test...' : '🚀 Launch AI Test Generation'}
+                  {generating ? 'Generating Test...' : <><Zap size={14} /> Launch AI Test Generation</>}
                 </button>
               </div>
 
               {/* Streamed Questions Preview */}
               {streamedQuestions.length > 0 && (
                 <div style={{ marginTop: 14 }}>
-                  <h4 style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, color: '#34d399' }}>
-                    ✅ Generated Questions ({streamedQuestions.length})
+                  <h4 style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, color: '#34d399', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <CheckCircle2 size={16} color="#34d399" /> Generated Questions ({streamedQuestions.length})
                   </h4>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 250, overflowY: 'auto' }}>
                     {streamedQuestions.map((q, idx) => (
@@ -619,29 +766,57 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
                           fontSize: 12,
                         }}
                       >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                          {q.bloom_level && (
+                            <span className="badge" style={{ background: '#4338ca', color: '#fff', fontSize: 9, padding: '2px 6px', borderRadius: 5, textTransform: 'capitalize' }}>
+                              {q.bloom_level}
+                            </span>
+                          )}
+                          <span className="badge" style={{ background: '#334155', color: '#fff', fontSize: 9, padding: '2px 6px', borderRadius: 5 }}>
+                            {q.type === 'descriptive' ? 'Descriptive' : 'MCQ'}
+                          </span>
+                        </div>
                         <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
                           {idx + 1}. {q.statement}
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                          {q.options && q.options.map((opt: any) => {
-                            const isCorrect = Array.isArray(q.correct_option_ids) && q.correct_option_ids.includes(opt.id);
-                            return (
-                              <div
-                                key={opt.id}
-                                style={{
-                                  padding: '4px 8px',
-                                  borderRadius: 6,
-                                  background: isCorrect ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255,255,255,0.02)',
-                                  border: `1px solid ${isCorrect ? 'rgba(16, 185, 129, 0.4)' : 'rgba(255,255,255,0.05)'}`,
-                                  color: isCorrect ? '#34d399' : 'var(--text-secondary)',
-                                  fontSize: 11,
-                                }}
-                              >
-                                {isCorrect ? '✓ ' : '• '}{opt.text}
-                              </div>
-                            );
-                          })}
-                        </div>
+                        {q.type === 'descriptive' ? (
+                          <div
+                            style={{
+                              padding: '6px 8px',
+                              borderRadius: 6,
+                              background: 'rgba(16, 185, 129, 0.1)',
+                              border: '1px solid rgba(16, 185, 129, 0.3)',
+                              color: '#34d399',
+                              fontSize: 11,
+                            }}
+                          >
+                            Reference answer: {q.reference_answer}
+                          </div>
+                        ) : (
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                            {q.options && (typeof q.options === 'string' ? JSON.parse(q.options) : q.options).map((opt: any) => {
+                              const correctIds = typeof q.correct_option_ids === 'string' ? JSON.parse(q.correct_option_ids) : q.correct_option_ids;
+                              const isCorrect = Array.isArray(correctIds) && correctIds.includes(opt.id);
+                              return (
+                                <div
+                                  key={opt.id}
+                                  style={{
+                                    padding: '4px 8px',
+                                    borderRadius: 6,
+                                    background: isCorrect ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255,255,255,0.02)',
+                                    border: `1px solid ${isCorrect ? 'rgba(16, 185, 129, 0.4)' : 'rgba(255,255,255,0.05)'}`,
+                                    color: isCorrect ? '#34d399' : 'var(--text-secondary)',
+                                    fontSize: 11,
+                                  }}
+                                >
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                    {isCorrect ? <Check size={11} /> : '•'} {opt.text}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -801,7 +976,7 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 20 }}>🛡️</span>
+                    <Shield size={20} color="#818cf8" />
                     <div>
                       <div style={{ fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
                         Anticheat & Exam Focus Mode
@@ -885,9 +1060,9 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
                   type="submit"
                   disabled={seeding}
                   className="btn-primary"
-                  style={{ padding: '10px 20px', fontSize: 13 }}
+                  style={{ padding: '10px 20px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}
                 >
-                  {seeding ? 'Saving...' : '💾 Seed & Publish Question'}
+                  {seeding ? 'Saving...' : <><Save size={14} /> Seed & Publish Question</>}
                 </button>
               </div>
             </form>
@@ -930,9 +1105,12 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
                                 color: '#a5b4fc',
                                 border: '1px solid rgba(99, 102, 241, 0.4)',
                                 fontSize: 10,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
                               }}
                             >
-                              🛡️ Proctored Focus Mode
+                              <Shield size={11} /> Proctored Focus Mode
                             </span>
                           ) : (
                             <span
@@ -942,9 +1120,12 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
                                 color: '#6ee7b7',
                                 border: '1px solid rgba(16, 185, 129, 0.3)',
                                 fontSize: 10,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
                               }}
                             >
-                              🌿 Open Formative
+                              <BookOpen size={11} /> Open Formative
                             </span>
                           )}
 
@@ -956,9 +1137,12 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
                                 color: '#fca5a5',
                                 border: '1px solid rgba(239, 68, 68, 0.4)',
                                 fontSize: 10,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
                               }}
                             >
-                              ⚠️ {a.violation_count} Incident{Number(a.violation_count) > 1 ? 's' : ''}
+                              <AlertTriangle size={11} /> {a.violation_count} Incident{Number(a.violation_count) > 1 ? 's' : ''}
                             </span>
                           )}
                         </div>
@@ -978,7 +1162,7 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
                             className="btn-secondary"
                             style={{ fontSize: 11, padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 4 }}
                           >
-                            <span>🔍</span>
+                            <Search size={12} />
                             <span>Audit Trail</span>
                           </button>
                         )}
@@ -1005,7 +1189,8 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                     <div>
                       <h4 style={{ fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span>🛡️ Forensic Audit Trail:</span>
+                        <Shield size={14} color="#818cf8" />
+                        <span>Forensic Audit Trail:</span>
                         <span style={{ color: '#818cf8' }}>{selectedReportAssessment.title}</span>
                       </h4>
                       <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
@@ -1015,9 +1200,9 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
                     <button
                       onClick={() => setSelectedReportAssessment(null)}
                       className="btn-secondary"
-                      style={{ fontSize: 11, padding: '4px 8px' }}
+                      style={{ fontSize: 11, padding: '4px 8px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                     >
-                      ✕ Close Report
+                      <X size={12} /> Close Report
                     </button>
                   </div>
 
@@ -1035,9 +1220,13 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
                         background: 'rgba(16, 185, 129, 0.06)',
                         borderRadius: 8,
                         border: '1px solid rgba(16, 185, 129, 0.2)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
                       }}
                     >
-                      ✨ Immaculate Integrity: No focus violations or suspicious events recorded for this assessment.
+                      <CheckCircle2 size={16} /> Immaculate Integrity: No focus violations or suspicious events recorded for this assessment.
                     </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 240, overflowY: 'auto' }}>
@@ -1074,12 +1263,15 @@ export default function AssessmentStudioModal({ isOpen, onClose, onSuccess }: As
                                   : '#f87171',
                                 fontSize: 11,
                                 fontWeight: 700,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
                               }}
                             >
-                              {evt.event_type === 'tab_switch' && '⚠️ Tab Switched / Left Exam'}
-                              {evt.event_type === 'window_blur' && '👁️ Window Focus Lost'}
-                              {evt.event_type === 'fullscreen_exit' && '⛶ Fullscreen Exited'}
-                              {evt.event_type === 'paste_attempt' && '📋 Clipboard Paste Blocked'}
+                              {evt.event_type === 'tab_switch' && <><AlertTriangle size={12} /> Tab Switched / Left Exam</>}
+                              {evt.event_type === 'window_blur' && <><Eye size={12} /> Window Focus Lost</>}
+                              {evt.event_type === 'fullscreen_exit' && <><Maximize size={12} /> Fullscreen Exited</>}
+                              {evt.event_type === 'paste_attempt' && <><Clipboard size={12} /> Clipboard Paste Blocked</>}
                               {!['tab_switch', 'window_blur', 'fullscreen_exit', 'paste_attempt'].includes(evt.event_type) && evt.event_type}
                             </span>
                           </div>

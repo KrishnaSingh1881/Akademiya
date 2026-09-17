@@ -8,6 +8,7 @@ import ClassInsightsApp from '../apps/ClassInsightsApp';
 import DiagnosticLabApp from '../apps/DiagnosticLabApp';
 import InterventionCenterApp from '../apps/InterventionCenterApp';
 import MyLearningApp from '../apps/MyLearningApp';
+import LearnApp from '../apps/LearnApp';
 import PracticeLabApp from '../apps/PracticeLabApp';
 import CodeLabApp from '../apps/CodeLabApp';
 import ProgressLabApp from '../apps/ProgressLabApp';
@@ -28,6 +29,8 @@ export default function WindowManager() {
         return <InterventionCenterApp />;
       case 'my-learning':
         return <MyLearningApp />;
+      case 'learn':
+        return <LearnApp />;
       case 'practice-lab':
         return <PracticeLabApp />;
       case 'code-lab':

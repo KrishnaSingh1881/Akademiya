@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Terminal, X } from 'lucide-react';
 
 export interface DebugLogItem {
   id: string;
@@ -76,7 +77,7 @@ export default function ConsoleDebugger({ isOpen, onClose }: { isOpen: boolean; 
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 14 }}>🐞</span>
+          <Terminal size={14} color="#38bdf8" />
           <span style={{ fontWeight: 700, color: '#38bdf8' }}>Akademiya Live Terminal & Console Debugger</span>
           <span style={{ fontSize: 10, padding: '2px 6px', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', borderRadius: 4 }}>
             {logs.length} events
@@ -102,11 +103,12 @@ export default function ConsoleDebugger({ isOpen, onClose }: { isOpen: boolean; 
               border: 'none',
               color: '#f87171',
               cursor: 'pointer',
-              fontSize: 14,
-              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
-            ✕
+            <X size={14} />
           </button>
         </div>
       </div>
