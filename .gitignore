@@ -5,3 +5,7 @@ data/
 node_modules/
 .agents/
 skills-lock.json
+.vite/
+dist/
+app/.vite/
+app/dist/
