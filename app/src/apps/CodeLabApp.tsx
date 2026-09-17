@@ -80,6 +80,28 @@ export default function CodeLabApp() {
   const [runningChallenge, setRunningChallenge] = useState(false);
   const [submittingChallenge, setSubmittingChallenge] = useState(false);
   const [explainingChallenge, setExplainingChallenge] = useState(false);
+  const [collapsedCourses, setCollapsedCourses] = useState<Set<string>>(new Set());
+
+  const DIFFICULTY_COLOR: Record<string, string> = { easy: '#34d399', medium: '#fbbf24', hard: '#f87171' };
+
+  const challengesByCourse = React.useMemo(() => {
+    const groups = new Map<string, any[]>();
+    for (const ch of challenges) {
+      const key = ch.course_name || 'Other Challenges';
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(ch);
+    }
+    return Array.from(groups.entries());
+  }, [challenges]);
+
+  const toggleCourseCollapsed = (courseName: string) => {
+    setCollapsedCourses((prev) => {
+      const next = new Set(prev);
+      if (next.has(courseName)) next.delete(courseName);
+      else next.add(courseName);
+      return next;
+    });
+  };
 
   // ── 1. Fetch Sandbox Files ──
   const fetchSandboxFiles = async (autoOpenDefault = false) => {
@@ -967,32 +989,74 @@ export default function CodeLabApp() {
       {/* ── MODE 2: GUIDED ALGORITHM CHALLENGES ── */}
       {appMode === 'challenges' && (
         <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 14, flex: 1, minHeight: 0 }}>
-          {/* Challenges List */}
+          {/* Challenges List, grouped by Learn window course */}
           <div className="glass-panel" style={{ borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto' }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>
               Curated Challenges ({challenges.length})
             </span>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {challenges.map((ch) => {
-                const isSelected = selectedChallenge?.id === ch.id;
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {challengesByCourse.map(([courseName, items]) => {
+                const isCollapsed = collapsedCourses.has(courseName);
                 return (
-                  <div
-                    key={ch.id}
-                    onClick={() => selectChallenge(ch)}
-                    style={{
-                      padding: '10px 12px',
-                      borderRadius: 8,
-                      background: isSelected ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.02)',
-                      border: isSelected ? '1px solid #38bdf8' : '1px solid var(--panel-border)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <div style={{ fontWeight: 700, fontSize: 12, color: isSelected ? '#38bdf8' : 'var(--text-primary)' }}>
-                      {ch.title}
+                  <div key={courseName} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div
+                      onClick={() => toggleCourseCollapsed(courseName)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        padding: '4px 2px',
+                        borderBottom: '1px solid var(--panel-border)',
+                      }}
+                    >
+                      <span style={{ fontSize: 11, fontWeight: 800, color: '#a855f7', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                        {courseName} ({items.length})
+                      </span>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{isCollapsed ? '▸' : '▾'}</span>
                     </div>
-                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
-                      {ch.concept} • {ch.subconcept}
-                    </div>
+
+                    {!isCollapsed && items.map((ch) => {
+                      const isSelected = selectedChallenge?.id === ch.id;
+                      return (
+                        <div
+                          key={ch.id}
+                          onClick={() => selectChallenge(ch)}
+                          style={{
+                            padding: '10px 12px',
+                            borderRadius: 8,
+                            background: isSelected ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.02)',
+                            border: isSelected ? '1px solid #38bdf8' : '1px solid var(--panel-border)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                            <span style={{ fontWeight: 700, fontSize: 12, color: isSelected ? '#38bdf8' : 'var(--text-primary)' }}>
+                              {ch.title}
+                            </span>
+                            {ch.difficulty && (
+                              <span
+                                style={{
+                                  fontSize: 9,
+                                  fontWeight: 800,
+                                  textTransform: 'uppercase',
+                                  padding: '1px 6px',
+                                  borderRadius: 8,
+                                  color: DIFFICULTY_COLOR[ch.difficulty] || 'var(--text-muted)',
+                                  border: `1px solid ${DIFFICULTY_COLOR[ch.difficulty] || 'var(--panel-border)'}`,
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {ch.difficulty}
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                            {ch.concept} • {ch.subconcept}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })}
@@ -1084,21 +1148,23 @@ export default function CodeLabApp() {
                 )}
 
                 {/* Challenge Submission Evaluation */}
-                {submissionResult && (
+                {submissionResult?.evaluation && (
                   <div
                     style={{
                       padding: 14,
                       borderRadius: 10,
-                      background: submissionResult.all_passed ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                      border: submissionResult.all_passed ? '1px solid #10b981' : '1px solid #ef4444',
+                      background: submissionResult.evaluation.is_correct ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                      border: submissionResult.evaluation.is_correct ? '1px solid #10b981' : '1px solid #ef4444',
                       fontSize: 12,
                     }}
                   >
-                    <div style={{ fontWeight: 800, color: submissionResult.all_passed ? '#34d399' : '#f87171' }}>
-                      {submissionResult.all_passed ? '✓ All Test Cases Passed!' : '✗ Some Test Cases Failed'}
+                    <div style={{ fontWeight: 800, color: submissionResult.evaluation.is_correct ? '#34d399' : '#f87171' }}>
+                      {submissionResult.evaluation.is_correct ? '✓ All Test Cases Passed!' : '✗ Some Test Cases Failed'}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
-                      Score: {submissionResult.score || 0}/10 • Passed: {submissionResult.passed_count || 0}/{submissionResult.total_count || 0} tests
+                      Score: {submissionResult.evaluation.marks_awarded ?? 0}/10 • Passed:{' '}
+                      {(submissionResult.evaluation.visible_cases_passed ?? 0) + (submissionResult.evaluation.hidden_cases_passed ?? 0)}/
+                      {(submissionResult.evaluation.visible_cases_total ?? 0) + (submissionResult.evaluation.hidden_cases_total ?? 0)} tests
                     </div>
                   </div>
                 )}

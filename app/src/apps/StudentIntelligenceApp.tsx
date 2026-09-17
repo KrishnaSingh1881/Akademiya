@@ -14,16 +14,19 @@ import {
   BookOpen,
   Sparkles,
   Layers,
+  Share2,
 } from 'lucide-react';
 import { useOSStore } from '../os/store/useOSStore';
+import StudentAcademicGraph from './StudentAcademicGraph';
 
 export default function StudentIntelligenceApp() {
   const { openWindow } = useOSStore();
   const [students, setStudents] = useState<any[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'telemetry' | 'gaps'>('telemetry');
+  const [activeTab, setActiveTab] = useState<'telemetry' | 'gaps' | 'graph'>('telemetry');
   const [gaps, setGaps] = useState<any[]>([]);
   const [activityData, setActivityData] = useState<any>(null);
+  const [violations, setViolations] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -45,10 +48,12 @@ export default function StudentIntelligenceApp() {
     Promise.all([
       axios.get(`/api/gaps/${selectedStudentId}`).catch(() => ({ data: { gaps: [] } })),
       axios.get(`/api/activity/summary/${selectedStudentId}`).catch(() => ({ data: { summary: {}, topics: [] } })),
+      axios.get(`/api/questions/students/${selectedStudentId}/integrity-summary`).catch(() => ({ data: { total_violations: 0, by_assessment: [] } })),
     ])
-      .then(([gapRes, actRes]) => {
+      .then(([gapRes, actRes, violRes]) => {
         setGaps(gapRes.data.gaps || []);
         setActivityData(actRes.data || { summary: {}, topics: [] });
+        setViolations(violRes.data || { total_violations: 0, by_assessment: [] });
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -156,6 +161,27 @@ export default function StudentIntelligenceApp() {
         >
           <Brain size={14} />
           <span>Conceptual Evidence Gaps ({gaps.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('graph')}
+          className={activeTab === 'graph' ? 'btn-primary' : 'btn-secondary'}
+          style={{
+            fontSize: 12,
+            padding: '5px 12px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            borderRadius: 7,
+          }}
+        >
+          <Share2 size={14} />
+          <span>Academic Graph</span>
+          {violations?.total_violations > 0 && (
+            <span style={{ background: '#ef4444', color: '#fff', fontSize: 10, fontWeight: 800, padding: '1px 5px', borderRadius: 10 }}>
+              {violations.total_violations} violations
+            </span>
+          )}
         </button>
       </div>
 
@@ -429,7 +455,7 @@ export default function StudentIntelligenceApp() {
             )}
           </div>
         </div>
-      ) : (
+      ) : activeTab === 'gaps' ? (
         /* ── EVIDENCE & GAPS VIEW ── */
         gaps.length === 0 ? (
           <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
@@ -533,6 +559,14 @@ export default function StudentIntelligenceApp() {
             ))}
           </div>
         )
+      ) : (
+        /* ── ACADEMIC GRAPH VIEW ── */
+        <StudentAcademicGraph
+          studentName={selectedStudent?.name || ''}
+          gaps={gaps}
+          topics={topics}
+          violations={violations}
+        />
       )}
     </div>
   );

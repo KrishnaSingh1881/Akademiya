@@ -325,6 +325,227 @@ def reverseList(head: ListNode) -> ListNode:
             tag: 'Comprehensive Lecture'
           }
         ]
+      },
+      {
+        id: 'dsa-sorting-algorithms',
+        title: 'Sorting Algorithms & Their Complexities',
+        readTime: '14 min read',
+        summary: 'Compare comparison-based and non-comparison sorting algorithms, their time/space trade-offs, and when stability matters.',
+        conceptNotes: [
+          '**Comparison-based sorts** (Bubble, Insertion, Selection, Merge, Quick, Heap) determine order purely by comparing pairs of elements; the **comparison sort lower bound** proves no such algorithm can beat **O(N log N)** worst-case time, since sorting is equivalent to resolving one of N! possible orderings via a decision tree of depth log₂(N!).',
+          '**Merge Sort** guarantees O(N log N) in all cases by recursively splitting the array and performing a linear-time **merge** of two sorted halves, at the cost of O(N) auxiliary space — making it the standard choice for **stable**, worst-case-predictable sorting (e.g., external sorting of files larger than memory).',
+          '**Quick Sort** partitions around a pivot and recurses on each side; its average case is O(N log N) with excellent cache locality and in-place O(log N) space, but a poor pivot choice degrades it to **O(N²)** on already-sorted or adversarial input, which is why production implementations randomize the pivot or fall back to a different algorithm (introsort).'
+        ],
+        keyTakeaways: [
+          'No comparison-based sort can do better than O(N log N) worst-case — this is a proven lower bound, not an engineering limitation.',
+          'Merge Sort trades O(N) extra space for guaranteed O(N log N) and stability; Quick Sort trades stability guarantees for in-place O(log N) space and better average-case constants.',
+          'Non-comparison sorts like Counting Sort and Radix Sort can beat O(N log N) by exploiting known key ranges, but only apply to specific input distributions.'
+        ],
+        codeSnippets: [
+          {
+            title: 'Merge Sort (Python)',
+            language: 'python',
+            code: `def merge_sort(arr):
+    if len(arr) <= 1:
+        return arr
+    mid = len(arr) // 2
+    left = merge_sort(arr[:mid])
+    right = merge_sort(arr[mid:])
+    return merge(left, right)
+
+def merge(left, right):
+    result = []
+    i = j = 0
+    while i < len(left) and j < len(right):
+        if left[i] <= right[j]:
+            result.append(left[i]); i += 1
+        else:
+            result.append(right[j]); j += 1
+    result.extend(left[i:])
+    result.extend(right[j:])
+    return result`
+          }
+        ],
+        practiceQuestions: [
+          {
+            id: 'q-merge-sort-array',
+            title: '1. Sort an Array (Merge Sort)',
+            difficulty: 'Medium',
+            description: 'Given an array of integers, sort it in ascending order using Merge Sort.',
+            example: 'Input: nums = [5,2,3,1] -> Output: [1,2,3,5]',
+            approach: 'Recursively split the array into halves until each has size 1, then merge sorted halves by repeatedly picking the smaller front element.',
+            solutionLanguage: 'python',
+            solutionCode: `def sort_array(nums: list[int]) -> list[int]:
+    if len(nums) <= 1:
+        return nums
+    mid = len(nums) // 2
+    left, right = sort_array(nums[:mid]), sort_array(nums[mid:])
+    merged, i, j = [], 0, 0
+    while i < len(left) and j < len(right):
+        if left[i] <= right[j]:
+            merged.append(left[i]); i += 1
+        else:
+            merged.append(right[j]); j += 1
+    return merged + left[i:] + right[j:]`,
+            timeComplexity: 'O(N log N)',
+            spaceComplexity: 'O(N)'
+          },
+          {
+            id: 'q-kth-largest',
+            title: '2. Kth Largest Element in an Array',
+            difficulty: 'Medium',
+            description: 'Find the kth largest element in an unsorted array using a Quickselect-style partition.',
+            example: 'Input: nums = [3,2,1,5,6,4], k = 2 -> Output: 5',
+            approach: 'Use Quickselect: partition around a pivot, then recurse only into the side that contains the kth largest index — giving average O(N) instead of a full O(N log N) sort.',
+            solutionLanguage: 'python',
+            solutionCode: `import random
+
+def find_kth_largest(nums: list[int], k: int) -> int:
+    target = len(nums) - k
+    def partition(lo, hi):
+        pivot = nums[random.randint(lo, hi)]
+        nums[hi], nums[nums.index(pivot, lo, hi + 1)] = nums[nums.index(pivot, lo, hi + 1)], nums[hi]
+        store = lo
+        for i in range(lo, hi):
+            if nums[i] < pivot:
+                nums[i], nums[store] = nums[store], nums[i]
+                store += 1
+        nums[store], nums[hi] = nums[hi], nums[store]
+        return store
+
+    lo, hi = 0, len(nums) - 1
+    while True:
+        p = partition(lo, hi)
+        if p == target:
+            return nums[p]
+        elif p < target:
+            lo = p + 1
+        else:
+            hi = p - 1`,
+            timeComplexity: 'O(N) average, O(N²) worst case',
+            spaceComplexity: 'O(1)'
+          }
+        ],
+        videoResources: [
+          {
+            title: 'Sorting Algorithms Explained (Bubble, Merge, Quick)',
+            channel: 'freeCodeCamp.org',
+            duration: 'Varies',
+            url: 'https://www.youtube.com/results?search_query=freeCodeCamp+sorting+algorithms+explained',
+            tag: 'DSA Video Lecture'
+          },
+          {
+            title: 'Quick Sort vs Merge Sort Deep Dive',
+            channel: 'take U forward (Striver)',
+            duration: 'Varies',
+            url: 'https://www.youtube.com/results?search_query=striver+quick+sort+merge+sort',
+            tag: 'Interview Patterns'
+          }
+        ]
+      },
+      {
+        id: 'dsa-stacks-queues',
+        title: 'Stacks, Queues & Their Applications',
+        readTime: '11 min read',
+        summary: 'Understand LIFO/FIFO access patterns and the classic problems — expression evaluation, monotonic stacks, and BFS — they unlock.',
+        conceptNotes: [
+          'A **Stack** is a **LIFO** (Last-In-First-Out) structure supporting O(1) `push`/`pop`/`peek` at one end only; it naturally models nested structures like function call frames, undo history, and balanced-bracket validation, where the most recently opened context must be the first one closed.',
+          'A **Queue** is a **FIFO** (First-In-First-Out) structure where elements are enqueued at the rear and dequeued from the front; it underlies **Breadth-First Search (BFS)**, task scheduling, and any producer/consumer pipeline where fairness (first-come-first-served) matters.',
+          'A **Monotonic Stack** maintains elements in strictly increasing or decreasing order by popping violating elements before pushing a new one; this turns O(N²) "next greater/smaller element" brute-force scans into a single O(N) pass, since each element is pushed and popped at most once.'
+        ],
+        keyTakeaways: [
+          'Stacks support O(1) operations at only one end; queues support O(1) enqueue at the rear and O(1) dequeue at the front (with a proper implementation, not a plain array shift).',
+          "A queue can be built from two stacks by lazily reversing one into the other only when the 'output' stack is empty — giving amortized O(1) per operation.",
+          'Monotonic stacks are the standard technique for "next greater element", "daily temperatures", and histogram-area style problems.'
+        ],
+        codeSnippets: [
+          {
+            title: 'Next Greater Element — Monotonic Stack (C++)',
+            language: 'cpp',
+            code: `vector<int> nextGreaterElement(vector<int>& nums) {
+    int n = nums.size();
+    vector<int> result(n, -1);
+    stack<int> st; // stores indices, values kept decreasing bottom-to-top
+
+    for (int i = 0; i < n; ++i) {
+        while (!st.empty() && nums[st.top()] < nums[i]) {
+            result[st.top()] = nums[i];
+            st.pop();
+        }
+        st.push(i);
+    }
+    return result;
+}`
+          }
+        ],
+        practiceQuestions: [
+          {
+            id: 'q-valid-parentheses-learn',
+            title: '1. Valid Parentheses',
+            difficulty: 'Easy',
+            description: "Given a string containing only '()[]{}', determine if the brackets are validly nested.",
+            example: "Input: s = '()[]{}' -> Output: true",
+            approach: 'Push opening brackets onto a stack; on a closing bracket, pop and check it matches the corresponding opener.',
+            solutionLanguage: 'python',
+            solutionCode: `def is_valid(s: str) -> bool:
+    pairs = {')': '(', ']': '[', '}': '{'}
+    stack = []
+    for ch in s:
+        if ch in '([{':
+            stack.append(ch)
+        elif ch in pairs:
+            if not stack or stack.pop() != pairs[ch]:
+                return False
+    return len(stack) == 0`,
+            timeComplexity: 'O(N)',
+            spaceComplexity: 'O(N)'
+          },
+          {
+            id: 'q-min-stack',
+            title: '2. Design a Min-Stack',
+            difficulty: 'Medium',
+            description: 'Design a stack that supports push, pop, top, and retrieving the minimum element, all in O(1).',
+            approach: 'Maintain a second stack that tracks the minimum seen so far, pushing a new minimum onto it whenever the incoming value is <= the current min.',
+            solutionLanguage: 'python',
+            solutionCode: `class MinStack:
+    def __init__(self):
+        self.stack = []
+        self.min_stack = []
+
+    def push(self, val: int) -> None:
+        self.stack.append(val)
+        if not self.min_stack or val <= self.min_stack[-1]:
+            self.min_stack.append(val)
+
+    def pop(self) -> None:
+        if self.stack.pop() == self.min_stack[-1]:
+            self.min_stack.pop()
+
+    def top(self) -> int:
+        return self.stack[-1]
+
+    def get_min(self) -> int:
+        return self.min_stack[-1]`,
+            timeComplexity: 'O(1) for all operations',
+            spaceComplexity: 'O(N)'
+          }
+        ],
+        videoResources: [
+          {
+            title: 'Stacks and Queues Explained',
+            channel: 'freeCodeCamp.org',
+            duration: 'Varies',
+            url: 'https://www.youtube.com/results?search_query=freeCodeCamp+stacks+and+queues',
+            tag: 'DSA Video Lecture'
+          },
+          {
+            title: 'Monotonic Stack Pattern Masterclass',
+            channel: 'NeetCode',
+            duration: 'Varies',
+            url: 'https://www.youtube.com/results?search_query=neetcode+monotonic+stack',
+            tag: 'Interview Patterns'
+          }
+        ]
       }
     ]
   },
@@ -552,6 +773,141 @@ Conclusion: Schedule is Conflict Serializable, equivalent to serial order <T1, T
             duration: '19:50',
             url: 'https://www.youtube.com/watch?v=Tbp3xjLp_4Q',
             tag: 'Core Exam Prep'
+          }
+        ]
+      },
+      {
+        id: 'dbms-indexing-optimization',
+        title: 'Indexing Strategies & Query Optimization',
+        readTime: '13 min read',
+        summary: 'Learn how database indexes accelerate lookups, when they hurt write performance, and how a query planner chooses execution paths.',
+        conceptNotes: [
+          'A **Database Index** is an auxiliary data structure (typically a **B+ Tree**) that maps column values to row locations, turning an O(N) full table scan into an **O(log N)** lookup — at the cost of extra storage and slower writes, since every INSERT/UPDATE/DELETE must also update the index.',
+          'A **Composite Index** on multiple columns `(A, B)` only accelerates queries that filter on a **left-prefix** of the index — a query filtering on B alone cannot use an (A, B) index efficiently, which is why column order in a composite index is a deliberate design decision, not an arbitrary one.',
+          'The **Query Optimizer** estimates the cost of alternative execution plans (index scan vs. sequential scan vs. join order) using table statistics (row counts, value distributions), and picks the plan with the lowest estimated cost — which is why `EXPLAIN ANALYZE` is the first diagnostic tool for a slow query, not guesswork.'
+        ],
+        keyTakeaways: [
+          'Indexes trade write-time cost and storage for read-time speed — over-indexing a write-heavy table can hurt more than it helps.',
+          'A composite index (A, B) serves queries filtering on A, or on (A and B), but NOT queries filtering on B alone.',
+          "Always verify a slow query's actual execution plan (EXPLAIN ANALYZE) before adding an index — the optimizer may already be making a reasonable choice given the data distribution."
+        ],
+        diagramType: 'b-tree',
+        codeSnippets: [
+          {
+            title: 'Composite Index & Query Plan (SQL)',
+            language: 'sql',
+            code: `-- A composite index serves queries filtering on a LEFT PREFIX of its columns
+CREATE INDEX idx_orders_customer_date ON orders (customer_id, order_date);
+
+-- Uses the index efficiently (filters on the left-prefix customer_id)
+EXPLAIN ANALYZE
+SELECT * FROM orders
+WHERE customer_id = 42 AND order_date > '2026-01-01';
+
+-- Cannot use idx_orders_customer_date efficiently (order_date is not a prefix)
+EXPLAIN ANALYZE
+SELECT * FROM orders
+WHERE order_date > '2026-01-01';`
+          }
+        ],
+        practiceQuestions: [
+          {
+            id: 'q-index-selectivity',
+            title: '1. Choose the Right Index Column',
+            difficulty: 'Medium',
+            description: 'Given a `users` table with columns `country` (5 distinct values) and `email` (unique per row), which column benefits more from an index for equality lookups, and why?',
+            approach: 'Index **selectivity** = distinct values / total rows. A unique column like `email` has maximum selectivity (each lookup narrows to ~1 row), while `country` with only 5 distinct values has low selectivity — an index on it barely improves over a full scan, since each lookup still matches a large fraction of rows.',
+            solutionLanguage: 'text',
+            solutionCode: `Selectivity(email) = N / N = 1.0 (highly selective — index very effective)
+Selectivity(country) = 5 / N (low selectivity for large N — an index scan
+may touch nearly as many rows as a sequential scan, so the optimizer may
+reasonably ignore the index and prefer a full table scan).`,
+            timeComplexity: 'N/A (conceptual)',
+            spaceComplexity: 'N/A'
+          }
+        ],
+        videoResources: [
+          {
+            title: 'Database Indexing Explained',
+            channel: 'Hussein Nasser',
+            duration: 'Varies',
+            url: 'https://www.youtube.com/results?search_query=hussein+nasser+database+indexing+explained',
+            tag: 'Systems Architecture'
+          },
+          {
+            title: 'How Query Optimizers Work',
+            channel: 'CMU Database Group',
+            duration: 'Varies',
+            url: 'https://www.youtube.com/results?search_query=cmu+database+query+optimizer',
+            tag: 'Advanced Database Internals'
+          }
+        ]
+      },
+      {
+        id: 'dbms-nosql-cap-theorem',
+        title: 'NoSQL vs Relational: CAP Theorem',
+        readTime: '12 min read',
+        summary: "Understand why distributed databases can't have it all, and how that trade-off shapes the choice between relational and NoSQL systems.",
+        conceptNotes: [
+          'The **CAP Theorem** states that a distributed data store can provide at most two of three guarantees simultaneously: **Consistency** (every read sees the latest write), **Availability** (every request gets a non-error response), and **Partition Tolerance** (the system keeps working despite network splits between nodes) — and since network partitions are unavoidable in any real distributed system, the practical choice is between **CP** (consistent but may reject requests during a partition) and **AP** (always responds, but may return stale data).',
+          '**Relational (SQL) databases** typically prioritize strong consistency and ACID transactions on a single node or tightly-coupled cluster, making them well-suited to workloads where correctness of relationships (foreign keys, joins, multi-row transactions) matters more than horizontal write scalability.',
+          '**NoSQL databases** (document, key-value, column-family, graph) relax the relational schema and often the consistency model in exchange for **horizontal scalability** and flexible schemas — e.g., a document store favors AP-style eventual consistency for high write throughput across many nodes, while a graph database optimizes for traversing relationships that would require expensive multi-way joins in SQL.'
+        ],
+        keyTakeaways: [
+          'CAP is a theorem about behavior DURING a network partition, not a permanent three-way trade-off — outside of a partition, a well-designed system can offer both C and A.',
+          'Choosing SQL vs NoSQL is a question of workload shape: multi-row transactional integrity favors relational; massive horizontal write scale or flexible/nested schemas favor NoSQL.',
+          'Eventual consistency means replicas WILL converge, just not instantly — application logic must tolerate reading slightly stale data in an AP system.'
+        ],
+        codeSnippets: [
+          {
+            title: 'Relational Row vs Document Model',
+            language: 'text',
+            code: `-- Relational (normalized across 2 tables, joined at query time)
+users(id, name)              orders(id, user_id, item, qty)
+1, "Alice"                   101, 1, "Keyboard", 1
+                              102, 1, "Mouse", 2
+
+-- Document (denormalized, embedded, single read)
+{
+  "_id": 1,
+  "name": "Alice",
+  "orders": [
+    { "item": "Keyboard", "qty": 1 },
+    { "item": "Mouse", "qty": 2 }
+  ]
+}`
+          }
+        ],
+        practiceQuestions: [
+          {
+            id: 'q-cap-tradeoff',
+            title: '1. Pick CP or AP for a Scenario',
+            difficulty: 'Medium',
+            description: 'A banking system must never show two different account balances to two users during a network partition, even if it means some requests fail. Is this system prioritizing CP or AP, and why?',
+            approach: 'Refusing to serve a possibly-stale balance during a partition sacrifices Availability to preserve Consistency — this is a CP choice, appropriate because showing an incorrect balance (e.g., allowing a double-spend) is worse than a temporary error.',
+            solutionLanguage: 'text',
+            solutionCode: `This is a CP (Consistent + Partition-tolerant) system.
+During a partition, it chooses to reject/delay requests rather than
+risk serving an inconsistent balance -- correctness is non-negotiable
+for financial state, so Availability is sacrificed when necessary.`,
+            timeComplexity: 'N/A (conceptual)',
+            spaceComplexity: 'N/A'
+          }
+        ],
+        videoResources: [
+          {
+            title: 'CAP Theorem Explained Simply',
+            channel: 'Gate Smashers',
+            duration: 'Varies',
+            url: 'https://www.youtube.com/results?search_query=gate+smashers+cap+theorem',
+            tag: 'Core Exam Prep'
+          },
+          {
+            title: 'SQL vs NoSQL — When to Use Which',
+            channel: 'freeCodeCamp.org',
+            duration: 'Varies',
+            url: 'https://www.youtube.com/results?search_query=freeCodeCamp+sql+vs+nosql',
+            tag: 'Systems Architecture'
           }
         ]
       }
@@ -807,6 +1163,140 @@ Therefore: Ack = 5000 + 1200 = 6200.`,
             duration: '14:20',
             url: 'https://www.youtube.com/watch?v=T4Df5_cojAs',
             tag: 'Cryptography & Systems'
+          }
+        ]
+      },
+      {
+        id: 'cn-routing-protocols',
+        title: 'Routing Protocols: RIP, OSPF & BGP',
+        readTime: '13 min read',
+        summary: 'Learn how routers discover paths across networks using distance-vector, link-state, and path-vector routing protocols.',
+        conceptNotes: [
+          "**RIP (Routing Information Protocol)** is a **distance-vector** protocol where each router periodically broadcasts its entire routing table to neighbors, and paths are chosen by hop count alone (capped at 15 hops, with 16 meaning 'unreachable') — simple to implement but slow to converge and prone to the **count-to-infinity** problem when a link fails.",
+          "**OSPF (Open Shortest Path First)** is a **link-state** protocol where every router floods information about its directly connected links to the entire area, letting each router independently build a full topology map and compute shortest paths using **Dijkstra's algorithm** — converging far faster than RIP and scaling to large enterprise networks via hierarchical **areas**.",
+          '**BGP (Border Gateway Protocol)** is the **path-vector** protocol that routes traffic BETWEEN autonomous systems (ASes) across the entire public internet; instead of optimizing purely for shortest path, BGP decisions are driven by **policy** (business agreements, path length, and administrative preference), which is why BGP misconfigurations can cause real-world internet outages by advertising incorrect routes.'
+        ],
+        keyTakeaways: [
+          "Distance-vector (RIP) shares 'my routing table' with neighbors; link-state (OSPF) shares 'my direct links' with everyone, enabling a full topology view.",
+          'OSPF converges faster and scales better than RIP because every router computes shortest paths locally from a complete map, rather than waiting for iterative table exchanges.',
+          'BGP glues the independent networks of the internet together and is driven by policy and business relationships, not just shortest path — a single bad BGP announcement can reroute or blackhole traffic globally.'
+        ],
+        codeSnippets: [
+          {
+            title: 'Distance-Vector vs Link-State Update Cycle',
+            language: 'text',
+            code: `RIP (Distance-Vector):
+  Router A sends: "My table: [B:1 hop, C:2 hops, D:3 hops]" -> to all neighbors
+  Every 30s, regardless of change. Convergence: slow (multiple hops to propagate).
+
+OSPF (Link-State):
+  Router A floods: "My direct links: [B, cost=1], [C, cost=5]" -> to ALL routers in area
+  Every router now has the FULL graph and runs Dijkstra locally.
+  Convergence: fast (one flood reaches everyone almost simultaneously).`
+          }
+        ],
+        practiceQuestions: [
+          {
+            id: 'q-distance-vs-linkstate',
+            title: '1. Diagnose a Routing Loop',
+            difficulty: 'Medium',
+            description: 'A distance-vector network experiences a "count-to-infinity" loop after a link fails. Explain why this happens and one mechanism used to prevent it.',
+            approach: 'When a link fails, a neighbor that still believes a route exists (via the now-broken router) advertises it back, causing both routers to keep incrementing the hop count toward infinity. **Split horizon** (never advertise a route back to the neighbor you learned it from) and **route poisoning** (advertise a failed route with an infinite metric) are standard fixes.',
+            solutionLanguage: 'text',
+            solutionCode: `Without split horizon:
+  A's route to X (via B) fails.
+  B still has "X via A, 2 hops" cached and advertises it to A.
+  A believes: "B can reach X in 2 hops" -> A sets its route to X via B at 3 hops.
+  B then sees A's 3-hop route and updates to 4 hops... looping toward infinity (capped at 16 = unreachable).
+
+Fix: Split horizon -- B never advertises a route back to A if A was the
+next-hop it learned that route from. Route poisoning explicitly marks a
+failed route as infinite-cost instead of just letting it time out.`,
+            timeComplexity: 'N/A (conceptual)',
+            spaceComplexity: 'N/A'
+          }
+        ],
+        videoResources: [
+          {
+            title: 'Routing Protocols: RIP, OSPF, BGP Compared',
+            channel: 'PowerCert Animated Videos',
+            duration: 'Varies',
+            url: 'https://www.youtube.com/results?search_query=powercert+routing+protocols+rip+ospf+bgp',
+            tag: 'Networking Fundamentals'
+          },
+          {
+            title: 'How BGP Actually Works',
+            channel: 'Cloudflare',
+            duration: 'Varies',
+            url: 'https://www.youtube.com/results?search_query=cloudflare+how+bgp+works',
+            tag: 'Deep Dive Architecture'
+          }
+        ]
+      },
+      {
+        id: 'cn-network-security',
+        title: 'Network Security: Firewalls, VPNs & IDS',
+        readTime: '12 min read',
+        summary: 'Understand the layered defenses that protect a network perimeter — packet filtering, encrypted tunnels, and intrusion detection.',
+        conceptNotes: [
+          'A **Firewall** enforces access control by inspecting traffic against rules; a **packet-filtering firewall** decides per-packet based on IP/port/protocol headers (fast, stateless), while a **stateful firewall** tracks connection state so it can recognize that an inbound packet is a legitimate reply to an outbound request rather than an unsolicited one.',
+          'A **VPN (Virtual Private Network)** creates an encrypted tunnel (commonly via **IPsec** or **TLS**) between two endpoints across an untrusted network, so traffic appears to originate from inside the private network — protecting confidentiality and integrity even when the underlying path traverses the public internet.',
+          'An **IDS (Intrusion Detection System)** monitors traffic for malicious patterns using either **signature-based** detection (matching known attack fingerprints, low false positives but blind to novel attacks) or **anomaly-based** detection (flagging statistically unusual behavior, catching novel attacks but with a higher false-positive rate); an **IPS (Intrusion Prevention System)** goes further and actively blocks matched traffic in-line rather than just alerting.'
+        ],
+        keyTakeaways: [
+          'Stateful firewalls track connections, letting them safely allow return traffic without opening a permanent inbound hole for every port used.',
+          'A VPN protects data IN TRANSIT across untrusted networks via encryption; it does not, by itself, secure the endpoints at either end of the tunnel.',
+          'Signature-based detection catches known attacks with high precision; anomaly-based detection can catch zero-day attacks but requires tuning to avoid alert fatigue from false positives.'
+        ],
+        codeSnippets: [
+          {
+            title: 'Stateless vs Stateful Firewall Decision',
+            language: 'text',
+            code: `Stateless (packet filter) rule table:
+  ALLOW  TCP  *:*        -> 10.0.0.5:443   (inbound HTTPS to server)
+  DENY   TCP  *:*        -> *:*            (default deny)
+  -- Must also add a rule to allow RETURN traffic from 10.0.0.5, or
+     replies never reach the client.
+
+Stateful firewall:
+  Client -> Server SYN (port 443): matched against rule table, ALLOWED.
+  Firewall records: "connection <client_ip:port <-> 10.0.0.5:443> is ESTABLISHED"
+  Server -> Client SYN-ACK: automatically ALLOWED because it matches an
+  existing tracked connection -- no separate inbound rule needed.`
+          }
+        ],
+        practiceQuestions: [
+          {
+            id: 'q-firewall-vpn-ids',
+            title: '1. Layered Defense Scenario',
+            difficulty: 'Easy',
+            description: 'A company wants remote employees to securely access internal file servers, wants to block unauthorized inbound connections, and wants to be alerted to unusual internal traffic patterns. Match each requirement to the right tool: Firewall, VPN, or IDS.',
+            approach: 'Each tool addresses a different layer of the defense: perimeter access control, secure remote connectivity, and behavioral monitoring.',
+            solutionLanguage: 'text',
+            solutionCode: `Secure remote access to internal servers      -> VPN (encrypted tunnel)
+Block unauthorized inbound connections         -> Firewall (access control rules)
+Detect unusual internal traffic patterns       -> IDS (anomaly/signature-based monitoring)
+
+These are complementary layers, not substitutes for one another --
+a real network typically deploys all three together.`,
+            timeComplexity: 'N/A (conceptual)',
+            spaceComplexity: 'N/A'
+          }
+        ],
+        videoResources: [
+          {
+            title: 'Firewalls Explained',
+            channel: 'PowerCert Animated Videos',
+            duration: 'Varies',
+            url: 'https://www.youtube.com/results?search_query=powercert+firewalls+explained',
+            tag: 'Networking Fundamentals'
+          },
+          {
+            title: 'VPNs and IDS/IPS Explained',
+            channel: 'freeCodeCamp.org',
+            duration: 'Varies',
+            url: 'https://www.youtube.com/results?search_query=freeCodeCamp+vpn+ids+ips+explained',
+            tag: 'Network Security'
           }
         ]
       }

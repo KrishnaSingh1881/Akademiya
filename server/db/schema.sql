@@ -169,8 +169,18 @@ CREATE TABLE IF NOT EXISTS coding_challenges (
   expected_behaviour TEXT NOT NULL,
   test_cases JSONB NOT NULL,
   diagnostic_tags JSONB DEFAULT '[]'::jsonb,
+  -- Loosely matches a Learn window CourseSubject.id/subjectName (no FK, same
+  -- free-text-by-convention pattern already used by student_topic_activity).
+  course_id VARCHAR(100),
+  course_name VARCHAR(255),
+  difficulty VARCHAR(50) DEFAULT 'medium',
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Idempotent for databases created before these columns existed.
+ALTER TABLE coding_challenges ADD COLUMN IF NOT EXISTS course_id VARCHAR(100);
+ALTER TABLE coding_challenges ADD COLUMN IF NOT EXISTS course_name VARCHAR(255);
+ALTER TABLE coding_challenges ADD COLUMN IF NOT EXISTS difficulty VARCHAR(50) DEFAULT 'medium';
 
 -- 15. integrity_events (Deterministic forensic anticheat tracking)
 CREATE TABLE IF NOT EXISTS integrity_events (
@@ -231,6 +241,7 @@ CREATE TABLE IF NOT EXISTS student_topic_activity (
 -- Helpful indexes for rapid deterministic querying
 CREATE INDEX IF NOT EXISTS idx_questions_concept ON questions(concept, subconcept);
 CREATE INDEX IF NOT EXISTS idx_questions_generated_for_student ON questions(generated_for_student_id);
+CREATE INDEX IF NOT EXISTS idx_coding_challenges_course ON coding_challenges(course_id);
 CREATE INDEX IF NOT EXISTS idx_attempts_student ON attempts(student_id, question_id);
 CREATE INDEX IF NOT EXISTS idx_evidence_student_concept ON learning_evidence(student_id, concept);
 CREATE INDEX IF NOT EXISTS idx_gaps_student_status ON learning_gaps(student_id, status);
