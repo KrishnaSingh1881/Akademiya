@@ -9,3 +9,4 @@ skills-lock.json
 dist/
 app/.vite/
 app/dist/
+graphify-out/
