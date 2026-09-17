@@ -11,6 +11,7 @@ export default function PracticeLabApp() {
   const [selectedConcept, setSelectedConcept] = useState<string>('all');
   const [selectedQuestion, setSelectedQuestion] = useState<any>(null);
   const [selectedOptionId, setSelectedOptionId] = useState<string>('');
+  const [descriptiveAnswer, setDescriptiveAnswer] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
   const [lastResult, setLastResult] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -152,18 +153,30 @@ export default function PracticeLabApp() {
   const handleSelectQuestion = (q: any) => {
     setSelectedQuestion(q);
     setSelectedOptionId('');
+    setDescriptiveAnswer('');
     setLastResult(null);
   };
 
   const handleSubmitAttempt = async () => {
-    if (!selectedQuestion || !selectedOptionId) return;
+    if (!selectedQuestion) return;
+    const isDescriptive = selectedQuestion.type === 'descriptive';
+    if (!isDescriptive && !selectedOptionId) return;
+    if (isDescriptive && !descriptiveAnswer.trim()) return;
+
     setSubmitting(true);
     try {
-      const res = await axios.post('/api/attempts', {
+      const payload: any = {
         question_id: selectedQuestion.id,
-        selected_option_ids: [selectedOptionId],
         source: activeAssessment ? 'assessment' : 'practice'
-      });
+      };
+
+      if (isDescriptive) {
+        payload.answer = descriptiveAnswer.trim();
+      } else {
+        payload.selected_option_ids = [selectedOptionId];
+      }
+
+      const res = await axios.post('/api/attempts', payload);
       setLastResult(res.data);
       if (activeAssessment) {
         // Refresh assessment questions
@@ -574,47 +587,74 @@ export default function PracticeLabApp() {
                   </h2>
                 </div>
 
-                {/* Options */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {parsedOptions.map((opt: any) => {
-                    const isChecked = selectedOptionId === opt.id;
-                    return (
-                      <div
-                        key={opt.id}
-                        onClick={() => setSelectedOptionId(opt.id)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 12,
-                          padding: '12px 16px',
-                          borderRadius: 10,
-                          background: isChecked ? 'rgba(var(--accent), 0.15)' : 'var(--card-bg)',
-                          border: isChecked ? '1px solid rgba(var(--accent), 0.7)' : '1px solid var(--panel-border)',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease',
-                        }}
-                      >
-                        <input
-                          type="radio"
-                          name="mcq_option"
-                          checked={isChecked}
-                          onChange={() => setSelectedOptionId(opt.id)}
-                        />
-                        <span style={{ fontSize: 13, fontWeight: 500 }}>{opt.text}</span>
-                      </div>
-                    );
-                  })}
-                </div>
+                {/* Options (for MCQ) OR Textarea (for Descriptive) */}
+                {selectedQuestion.type === 'descriptive' ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                      📝 Provide your complete explanation in your own words:
+                    </div>
+                    <textarea
+                      value={descriptiveAnswer}
+                      onChange={(e) => setDescriptiveAnswer(e.target.value)}
+                      placeholder="Type your structured explanation here (e.g. key mechanism, base cases, state transitions)..."
+                      rows={6}
+                      style={{
+                        width: '100%',
+                        padding: '12px 14px',
+                        borderRadius: 10,
+                        background: 'var(--input-bg)',
+                        border: '1px solid var(--panel-border)',
+                        color: 'var(--text-primary)',
+                        fontSize: 13,
+                        lineHeight: 1.5,
+                        fontFamily: 'inherit',
+                        outline: 'none',
+                        resize: 'vertical'
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {parsedOptions.map((opt: any) => {
+                      const isChecked = selectedOptionId === opt.id;
+                      return (
+                        <div
+                          key={opt.id}
+                          onClick={() => setSelectedOptionId(opt.id)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 12,
+                            padding: '12px 16px',
+                            borderRadius: 10,
+                            background: isChecked ? 'rgba(var(--accent), 0.15)' : 'var(--card-bg)',
+                            border: isChecked ? '1px solid rgba(var(--accent), 0.7)' : '1px solid var(--panel-border)',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <input
+                            type="radio"
+                            name="mcq_option"
+                            checked={isChecked}
+                            onChange={() => setSelectedOptionId(opt.id)}
+                          />
+                          <span style={{ fontSize: 13, fontWeight: 500 }}>{opt.text}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
 
                 {/* Submit Button */}
                 <div>
                   <button
                     onClick={handleSubmitAttempt}
-                    disabled={submitting || !selectedOptionId}
+                    disabled={submitting || (selectedQuestion.type === 'descriptive' ? !descriptiveAnswer.trim() : !selectedOptionId)}
                     className="btn-primary"
                     style={{ padding: '10px 24px', fontSize: 14 }}
                   >
-                    {submitting ? 'Evaluating answer...' : 'Submit Attempt'}
+                    {submitting ? 'Evaluating answer...' : selectedQuestion.type === 'descriptive' ? 'Submit Explanation for Rubric Grading' : 'Submit Attempt'}
                   </button>
                 </div>
 
@@ -626,22 +666,83 @@ export default function PracticeLabApp() {
                       padding: 16,
                       background: lastResult.evaluation?.is_correct
                         ? 'rgba(16, 185, 129, 0.15)'
+                        : lastResult.evaluation?.verdict === 'partial'
+                        ? 'rgba(245, 158, 11, 0.15)'
                         : 'rgba(239, 68, 68, 0.15)',
                       border: lastResult.evaluation?.is_correct
                         ? '1px solid rgba(16, 185, 129, 0.4)'
+                        : lastResult.evaluation?.verdict === 'partial'
+                        ? '1px solid rgba(245, 158, 11, 0.4)'
                         : '1px solid rgba(239, 68, 68, 0.4)',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 20 }}>
-                        {lastResult.evaluation?.is_correct ? '🎉' : '⚠️'}
-                      </span>
-                      <div style={{ fontWeight: 800, fontSize: 15 }}>
-                        {lastResult.evaluation?.is_correct
-                          ? 'Correct Answer! Marks Awarded: ' + lastResult.evaluation.marks_awarded
-                          : 'Incorrect. Learning evidence recorded.'}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 20 }}>
+                          {lastResult.evaluation?.is_correct ? '🎉' : lastResult.evaluation?.verdict === 'partial' ? '⚖️' : '⚠️'}
+                        </span>
+                        <div style={{ fontWeight: 800, fontSize: 15 }}>
+                          {lastResult.evaluation?.verdict
+                            ? `Verdict: ${lastResult.evaluation.verdict.toUpperCase()} (Marks: ${lastResult.evaluation.marks_awarded})`
+                            : lastResult.evaluation?.is_correct
+                            ? 'Correct Answer! Marks Awarded: ' + lastResult.evaluation.marks_awarded
+                            : 'Incorrect. Learning evidence recorded.'}
+                        </div>
                       </div>
+
+                      {lastResult.evidence?.source && (
+                        <span
+                          className="badge"
+                          style={{
+                            fontSize: 10,
+                            background: lastResult.evidence.source === 'ai_graded_descriptive' ? 'rgba(168, 85, 247, 0.2)' : 'rgba(255, 255, 255, 0.08)',
+                            color: lastResult.evidence.source === 'ai_graded_descriptive' ? 'var(--accent-light)' : 'var(--text-secondary)'
+                          }}
+                        >
+                          Source: {lastResult.evidence.source}
+                        </span>
+                      )}
                     </div>
+
+                    {/* Descriptive Rubric Breakdown (Covered & Missed) */}
+                    {lastResult.evaluation?.grading_details && (
+                      <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12 }}>
+                        {lastResult.evaluation.grading_details.similarity_score !== undefined && (
+                          <div style={{ color: 'var(--text-secondary)' }}>
+                            📊 Semantic Similarity: <strong>{(lastResult.evaluation.grading_details.similarity_score * 100).toFixed(1)}%</strong>
+                          </div>
+                        )}
+
+                        {lastResult.evaluation.grading_details.covered?.length > 0 && (
+                          <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: 10, borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                            <div style={{ fontWeight: 700, color: '#34d399', marginBottom: 4 }}>✓ Concepts Covered:</div>
+                            <ul style={{ margin: 0, paddingLeft: 18 }}>
+                              {lastResult.evaluation.grading_details.covered.map((c: string, i: number) => (
+                                <li key={i}>{c}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {lastResult.evaluation.grading_details.missed?.length > 0 && (
+                          <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: 10, borderRadius: 8, border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                            <div style={{ fontWeight: 700, color: '#f87171', marginBottom: 4 }}>✗ Points Missed / To Elaborate:</div>
+                            <ul style={{ margin: 0, paddingLeft: 18 }}>
+                              {lastResult.evaluation.grading_details.missed.map((m: string, i: number) => (
+                                <li key={i}>{m}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Auto Attendance Notification */}
+                    {lastResult.auto_attendance?.length > 0 && (
+                      <div style={{ marginTop: 10, fontSize: 11, color: '#34d399', fontWeight: 600 }}>
+                        📅 Auto-Attendance: Attendance recorded for active session window!
+                      </div>
+                    )}
 
                     {/* Gap Formed Signal */}
                     {lastResult.gap_detected?.is_new && (

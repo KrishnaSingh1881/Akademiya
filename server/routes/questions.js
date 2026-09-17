@@ -117,24 +117,38 @@ router.post('/seed', requireAuth, requireTeacher, async (req, res) => {
       concept,
       subconcept,
       statement,
-      options,
-      correct_option_ids,
+      options = null,
+      correct_option_ids = null,
+      reference_answer = null,
       type = 'mcq_single',
       bloom_level = 'understand',
       difficulty = 'medium',
       assessment_id = null
     } = req.body;
 
-    if (!concept || !subconcept || !statement || !options || !correct_option_ids) {
+    if (!concept || !subconcept || !statement) {
       return res.status(400).json({
-        error: 'concept, subconcept, statement, options, and correct_option_ids are required'
+        error: 'concept, subconcept, and statement are required'
       });
+    }
+
+    if (type !== 'descriptive' && (!options || !correct_option_ids)) {
+      return res.status(400).json({
+        error: 'options and correct_option_ids are required for MCQ questions'
+      });
+    }
+
+    let refEmbedding = null;
+    if (type === 'descriptive' && reference_answer) {
+      const { generateEmbedding } = await import('../ai/modelAdapter.js');
+      const emb = await generateEmbedding(reference_answer);
+      refEmbedding = `[${emb.join(',')}]`;
     }
 
     const result = await query(
       `INSERT INTO questions 
-       (assessment_id, concept, subconcept, type, statement, options, correct_option_ids, bloom_level, difficulty, source)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'teacher')
+       (assessment_id, concept, subconcept, type, statement, options, correct_option_ids, reference_answer, reference_answer_embedding, bloom_level, difficulty, source)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'teacher')
        RETURNING *`,
       [
         assessment_id,
@@ -142,8 +156,10 @@ router.post('/seed', requireAuth, requireTeacher, async (req, res) => {
         subconcept.trim(),
         type,
         statement.trim(),
-        JSON.stringify(options),
-        JSON.stringify(correct_option_ids),
+        options ? JSON.stringify(options) : null,
+        correct_option_ids ? JSON.stringify(correct_option_ids) : null,
+        reference_answer ? reference_answer.trim() : null,
+        refEmbedding,
         bloom_level,
         difficulty
       ]

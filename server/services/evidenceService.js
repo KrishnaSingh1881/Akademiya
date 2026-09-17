@@ -19,7 +19,7 @@ import { query } from '../db/index.js';
 
 export async function aggregateEvidence(studentId, concept) {
   const result = await query(
-    `SELECT id, student_id, concept, subconcept, attempt_id, result, created_at
+    `SELECT id, student_id, concept, subconcept, attempt_id, result, source, created_at
      FROM learning_evidence
      WHERE student_id = $1 AND concept = $2
      ORDER BY created_at DESC
@@ -41,10 +41,16 @@ export async function aggregateEvidence(studentId, concept) {
   let incorrectWeight = 0;
 
   rows.forEach((row, index) => {
-    const weight = Math.pow(DECAY, index);
-    totalWeight += weight;
+    // Recency decay factor
+    const recencyWeight = Math.pow(DECAY, index);
+    // Trust weight: deterministic evidence has full trust (1.0),
+    // ai_graded_descriptive has lower trust (0.6) per Phase 10 spec.
+    const trustWeight = row.source === 'ai_graded_descriptive' ? 0.6 : 1.0;
+    const effectiveWeight = recencyWeight * trustWeight;
+
+    totalWeight += effectiveWeight;
     if (row.result === 'incorrect') {
-      incorrectWeight += weight;
+      incorrectWeight += effectiveWeight;
     }
   });
 
@@ -131,8 +137,8 @@ export async function getStudentGapsWithEvidence(studentId) {
       }
 
       const evidenceQuery = await query(
-        `SELECT le.id, le.concept, le.subconcept, le.result, le.created_at,
-                a.source as attempt_source, a.marks_awarded, a.selected_option_ids,
+        `SELECT le.id, le.concept, le.subconcept, le.result, le.source as evidence_source, le.created_at,
+                a.source as attempt_source, a.marks_awarded, a.selected_option_ids, a.grading_details,
                 q.statement, q.type as question_type, q.bloom_level
          FROM learning_evidence le
          LEFT JOIN attempts a ON le.attempt_id = a.id

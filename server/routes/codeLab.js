@@ -137,6 +137,10 @@ router.post('/submit', requireAuth, async (req, res) => {
     // Trigger gap detection
     const gap = await detectGap(studentId, challenge.concept, challenge.subconcept);
 
+    // Phase 11: Auto attendance hook on assignment / code completion
+    const { checkAttendance } = await import('../services/attendanceService.js');
+    await checkAttendance(studentId, new Date(), 'assignment_completion');
+
     return res.json({
       evaluation: evalResult,
       attempt: attemptRes.rows[0],

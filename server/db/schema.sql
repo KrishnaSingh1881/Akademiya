@@ -30,10 +30,12 @@ CREATE TABLE IF NOT EXISTS questions (
   assessment_id UUID REFERENCES assessments(id) ON DELETE SET NULL,
   concept VARCHAR(255) NOT NULL,
   subconcept VARCHAR(255) NOT NULL,
-  type VARCHAR(50) NOT NULL CHECK (type IN ('mcq_single', 'mcq_multi', 'coding')),
+  type VARCHAR(50) NOT NULL CHECK (type IN ('mcq_single', 'mcq_multi', 'coding', 'descriptive')),
   statement TEXT NOT NULL,
   options JSONB,
   correct_option_ids JSONB,
+  reference_answer TEXT,
+  reference_answer_embedding vector(768),
   bloom_level VARCHAR(50),
   difficulty VARCHAR(50),
   source VARCHAR(50) NOT NULL DEFAULT 'teacher' CHECK (source IN ('teacher', 'ai')),
@@ -51,6 +53,7 @@ CREATE TABLE IF NOT EXISTS attempts (
   code TEXT,
   is_correct BOOLEAN NOT NULL,
   marks_awarded NUMERIC(5, 2) NOT NULL DEFAULT 0,
+  grading_details JSONB,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -62,6 +65,7 @@ CREATE TABLE IF NOT EXISTS learning_evidence (
   subconcept VARCHAR(255) NOT NULL,
   attempt_id UUID NOT NULL REFERENCES attempts(id) ON DELETE CASCADE,
   result VARCHAR(50) NOT NULL CHECK (result IN ('correct', 'incorrect')),
+  source VARCHAR(50) NOT NULL DEFAULT 'deterministic' CHECK (source IN ('deterministic', 'ai_graded_descriptive')),
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -172,6 +176,26 @@ CREATE TABLE IF NOT EXISTS integrity_events (
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 16. class_sessions (Phase 11: Auto attendance class windows)
+CREATE TABLE IF NOT EXISTS class_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title VARCHAR(255) NOT NULL,
+  start_time TIMESTAMPTZ NOT NULL,
+  end_time TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 17. attendance (Phase 11: Deterministic auto-attendance records)
+CREATE TABLE IF NOT EXISTS attendance (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  session_id UUID NOT NULL REFERENCES class_sessions(id) ON DELETE CASCADE,
+  marked_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  source VARCHAR(50) NOT NULL CHECK (source IN ('assignment_completion', 'assessment_completion', 'video_completion')),
+  CONSTRAINT unique_student_session UNIQUE (student_id, session_id)
+);
+
 -- Helpful indexes for rapid deterministic querying
 CREATE INDEX IF NOT EXISTS idx_questions_concept ON questions(concept, subconcept);
 CREATE INDEX IF NOT EXISTS idx_attempts_student ON attempts(student_id, question_id);
@@ -180,4 +204,8 @@ CREATE INDEX IF NOT EXISTS idx_gaps_student_status ON learning_gaps(student_id, 
 CREATE INDEX IF NOT EXISTS idx_interventions_gap ON interventions(gap_id);
 CREATE INDEX IF NOT EXISTS idx_gen_jobs_teacher ON generation_jobs(teacher_id);
 CREATE INDEX IF NOT EXISTS idx_integrity_events_assess_student ON integrity_events(assessment_id, student_id);
+CREATE INDEX IF NOT EXISTS idx_class_sessions_window ON class_sessions(start_time, end_time);
+CREATE INDEX IF NOT EXISTS idx_attendance_student ON attendance(student_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_session ON attendance(session_id);
+
 

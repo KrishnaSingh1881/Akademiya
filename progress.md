@@ -17,6 +17,8 @@
 | **Phase 7** | Reassessment + Progress Lab | ✅ Completed | `POST /api/progress/reassessments`, before/after evidence set comparison, verifiable delta calculation, Progress Lab UI. |
 | **Phase 8** | Secondary Apps (My Learning, Class Insights, Code Lab, Settings) | ✅ Completed | My Learning cockpit, Class Insights single-query aggregation, Code Lab with Monaco editor + Python runner, Settings with theme & font scale. |
 | **Phase 9** | Semantic Layer (pgvector Search & Deduplication) | ✅ Completed | Unified `semanticSearch()` using pgvector cosine distance, duplicate detection threshold, similar question matching. |
+| **Phase 10** | Descriptive Questions & Rubric Grading | ✅ Completed | `descriptive` question type, teacher `reference_answer`, embedding cosine similarity + `grade_descriptive_answer()` rubric, covered/missed points, `ai_graded_descriptive` weighted evidence. |
+| **Phase 11** | Deterministic Auto-Attendance | ✅ Completed | `class_sessions` windows, `attendance` records, deterministic `checkAttendance` hooks, session roster query, zero AI involvement. |
 
 ---
 
@@ -164,6 +166,52 @@
   - Similar Question Retrieval: Finds semantically similar questions across concepts (threshold 0.50).
 - **Verification (`verify-golden-path.js` Step 12):**
   - Ran semantic duplicate check with high cosine similarity threshold → confirmed duplicate detection operates as specified.
+
+### Phase 10 — Descriptive-Answer Questions (Milestone Spec & Verification)
+- **Schema & Database Enhancements:**
+  - `questions` table: added `type = 'descriptive'`, `reference_answer` (TEXT, teacher-written), and `reference_answer_embedding` (`vector(768)`).
+  - `attempts` table: added `grading_details` (`JSONB`) storing semantic similarity score, verdict, and structured covered/missed breakdown.
+  - `learning_evidence` table: added `source` column (`VARCHAR(50) NOT NULL DEFAULT 'deterministic' CHECK (source IN ('deterministic', 'ai_graded_descriptive'))`).
+- **AI Model Adapter (`server/ai/modelAdapter.js`):**
+  - Added `grade_descriptive_answer(questionStatement, referenceAnswer, studentAnswer)` returning structured `{ verdict: 'correct'|'partial'|'incorrect', covered: [...], missed: [...] }`. Never returns just a number or score.
+  - Features local Ollama execution with deterministic heuristic keyword & concept fallback.
+- **Grading Flow in `server/routes/attempts.js`:**
+  1. Fast first pass: embeds student's answer using `generateEmbedding()` and calculates cosine similarity against `reference_answer_embedding`.
+  2. Second pass: calls `grade_descriptive_answer()` to analyze conceptual coverage.
+  3. Structured persistence: persists both similarity score and structured covered/missed arrays on the attempt.
+  4. Writes to `learning_evidence` with `source = 'ai_graded_descriptive'` (deterministic MCQ/coding stays tagged `source = 'deterministic'`).
+- **Trust-Weighted Evidence Aggregation (`server/services/evidenceService.js`):**
+  - In `aggregateEvidence(studentId, concept)`, `ai_graded_descriptive` evidence is weighted at `0.6x` compared to deterministic evidence `1.0x`, ensuring AI-graded answers are treated with appropriate trust when calculating gap triggers.
+- **UI Integration in Practice Lab:**
+  - Full interactive textarea for descriptive explanations; displays verdict badges, similarity metrics, and concrete covered/missed concept lists.
+- **Verification (`server/test/verify-phases-10-11.js`):**
+  - Submitted comprehensive correct explanation: received `verdict = 'partial'/'correct'`, marks awarded, similarity recorded, and 4 covered key concepts.
+  - Submitted unrelated wrong explanation: received `verdict = 'incorrect'`, 0 marks, and missing concept alerts.
+  - Verified learning evidence logged as `source = 'ai_graded_descriptive'`.
+
+### Phase 11 — Auto Attendance (Deterministic, No AI)
+- **Schema Implementation:**
+  - `class_sessions`: `id, teacher_id, title, start_time, end_time, created_at` with window indexing.
+  - `attendance`: `id, student_id, session_id, marked_at, source ('assignment_completion'|'assessment_completion'|'video_completion')` with `UNIQUE (student_id, session_id)` constraint.
+- **Deterministic Service (`server/services/attendanceService.js`):**
+  - `checkAttendance(student_id, timestamp, source)`: Purely deterministic timestamp check against active `class_sessions`. If timestamp falls within the window and no attendance exists yet, records attendance automatically with source. Never marked manually by teacher or directly by student.
+  - `getSessionAttendanceRoster(sessionId)`: Generates full class roster with present/absent status, attendance rate percentage, and trigger source.
+- **Activity Hooks:**
+  - Hooked into `POST /api/attempts` (on assignment/practice completion).
+  - Hooked into `POST /api/code-lab/submit` (on coding challenge completion).
+- **API Endpoints (`server/routes/attendance.js`):**
+  - `POST /api/attendance/sessions`: Teacher creates class session window.
+  - `GET /api/attendance/sessions`: Lists sessions with active indicator and attendance counters.
+  - `GET /api/attendance/session/:id`: Returns session details with full student roster.
+- **UI Integration in Class Insights:**
+  - Added dedicated **"Deterministic Auto-Attendance"** tab.
+  - Quick 1-hour session creation button.
+  - Live session switcher and student roster table showing present/absent badges and deterministic trigger source (`assignment_completion`).
+- **Verification (`server/test/verify-phases-10-11.js`):**
+  - Created session window `now - 15m` to `now + 45m`.
+  - Student submitted assignment during the window → attendance row inserted automatically with source `assignment_completion`.
+  - Student submitted second assignment in same window → verified idempotency (0 duplicate attendance rows).
+  - Queried `GET /api/attendance/session/:id` → confirmed full roster reflected 50% attendance with exact trigger source.
 
 ---
 

@@ -220,6 +220,80 @@ Explain in 2-3 clear, constructive sentences why this failed and the conceptual 
   }
 }
 
+export async function grade_descriptive_answer(questionStatement, referenceAnswer, studentAnswer) {
+  const prompt = `You are a computer science teacher grading a student's descriptive explanation.
+Question: ${questionStatement}
+Teacher's Reference Answer: ${referenceAnswer}
+Student's Answer: ${studentAnswer}
+
+Evaluate the student's explanation against the reference answer.
+Determine if the explanation is correct, partially correct, or incorrect.
+Identify which core conceptual points were covered and which critical points were missed.
+
+CRITICAL: Return ONLY a JSON object with this exact structure:
+{
+  "verdict": "correct", // must be "correct", "partial", or "incorrect"
+  "covered": ["point 1 explained well", "point 2 demonstrated"],
+  "missed": ["missing point 1"]
+}
+Never return just a number or score.`;
+
+  try {
+    const res = await axios.post(
+      `${OLLAMA_BASE_URL}/api/generate`,
+      {
+        model: OLLAMA_GEN_MODEL,
+        prompt,
+        stream: false,
+        format: 'json',
+        options: { temperature: 0.2 }
+      },
+      { timeout: TIMEOUT_MS }
+    );
+
+    const parsed = extractJSON(res.data.response);
+    if (parsed && ['correct', 'partial', 'incorrect'].includes(parsed.verdict)) {
+      return {
+        verdict: parsed.verdict,
+        covered: Array.isArray(parsed.covered) ? parsed.covered : [],
+        missed: Array.isArray(parsed.missed) ? parsed.missed : []
+      };
+    }
+  } catch (err) {
+    console.warn(`[ModelAdapter] grade_descriptive_answer Ollama fallback: ${err.message}`);
+  }
+
+  // Robust deterministic heuristic fallback
+  const STOP_WORDS = new Set(['each', 'with', 'without', 'that', 'this', 'from', 'into', 'until', 'when', 'where', 'which', 'their', 'there', 'have', 'been', 'will', 'would', 'should', 'could']);
+  const normalize = (txt) => (txt || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 3 && !STOP_WORDS.has(w));
+  const refWords = Array.from(new Set(normalize(referenceAnswer)));
+  const stuWords = new Set(normalize(studentAnswer));
+
+  const matched = refWords.filter(w => stuWords.has(w));
+  const missedWords = refWords.filter(w => !stuWords.has(w));
+  const matchRatio = refWords.length > 0 ? (matched.length / refWords.length) : 0;
+
+  let verdict = 'incorrect';
+  if (matchRatio >= 0.40) {
+    verdict = 'correct';
+  } else if (matchRatio >= 0.20) {
+    verdict = 'partial';
+  }
+
+  const covered = matched.length > 0
+    ? matched.slice(0, 4).map(w => `Identified key concept related to '${w}'`)
+    : [];
+  const missed = missedWords.length > 0
+    ? missedWords.slice(0, 4).map(w => `Omitted reference point '${w}'`)
+    : ['Needs more elaboration on core mechanism'];
+
+  return {
+    verdict,
+    covered,
+    missed
+  };
+}
+
 export async function generateEmbedding(text) {
   try {
     const res = await axios.post(
@@ -245,3 +319,4 @@ export async function generateEmbedding(text) {
   }
   return vec;
 }
+
