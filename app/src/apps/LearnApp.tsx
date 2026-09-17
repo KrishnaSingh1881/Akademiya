@@ -89,7 +89,7 @@ export default function LearnApp() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, gap: 12, overflow: 'hidden' }}>
       {/* Top Controls Bar: Year Filters & Search */}
       <div
         style={{
@@ -173,10 +173,10 @@ export default function LearnApp() {
       </div>
 
       {/* Main 2-Column Split: Curriculum Navigation Sidebar & Course Reader */}
-      <div style={{ display: 'grid', gridTemplateColumns: '290px 1fr', gap: 14, flex: 1, minHeight: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '290px 1fr', gap: 14, flex: 1, minHeight: 0, height: '100%', overflow: 'hidden' }}>
         {/* Left Sidebar: Subjects & Modules */}
         <div
-          className="glass-panel"
+          className="glass-panel custom-scrollbar"
           style={{
             borderRadius: 14,
             padding: 12,
@@ -184,6 +184,8 @@ export default function LearnApp() {
             flexDirection: 'column',
             gap: 12,
             overflowY: 'auto',
+            minHeight: 0,
+            height: '100%',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -328,6 +330,8 @@ export default function LearnApp() {
             borderRadius: 14,
             padding: 24,
             overflowY: 'auto',
+            minHeight: 0,
+            height: '100%',
             display: 'flex',
             flexDirection: 'column',
             gap: 22,

@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useOSStore } from './store/useOSStore';
+import { useOSSettings } from './store/useOSSettings';
 import MenuBar from './MenuBar';
 import Dock from './Dock';
 import WindowManager from './WindowManager';
@@ -10,6 +11,7 @@ import AssessmentStudioModal from './components/AssessmentStudioModal';
 export default function Desktop() {
   const { user } = useAuth();
   const { openWindow, windows } = useOSStore();
+  const { wallpaper } = useOSSettings();
   const [showDebugger, setShowDebugger] = useState(false);
   const [showTestModal, setShowTestModal] = useState(false);
   const initialized = useRef(false);
@@ -29,6 +31,25 @@ export default function Desktop() {
     return () => window.removeEventListener('akademiya-open-test-studio', handleOpenStudio);
   }, [user]);
 
+  const desktopBgStyle = useMemo<React.CSSProperties>(() => {
+    if (!wallpaper || wallpaper === 'var(--bg-desktop)') {
+      return { background: 'var(--bg-desktop)' };
+    }
+    if (
+      wallpaper.startsWith('http://') ||
+      wallpaper.startsWith('https://') ||
+      wallpaper.startsWith('data:image')
+    ) {
+      return {
+        backgroundImage: `linear-gradient(rgba(10, 12, 20, 0.45), rgba(10, 12, 20, 0.65)), url("${wallpaper}")`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      };
+    }
+    return { background: wallpaper };
+  }, [wallpaper]);
+
   return (
     <div
       style={{
@@ -36,7 +57,8 @@ export default function Desktop() {
         width: '100vw',
         height: '100vh',
         overflow: 'hidden',
-        background: 'var(--bg-desktop)',
+        transition: 'background 0.35s ease, background-image 0.35s ease',
+        ...desktopBgStyle,
       }}
     >
       {/* Top MenuBar */}
