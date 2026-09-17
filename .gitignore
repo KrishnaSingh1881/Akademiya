@@ -1,3 +1,9 @@
-data/
+legacy/
 .gitignore
 .env
+.agents/
+skills-lock.json
+ANTIGRAVITY_PROMPTS-1.md
+ANTIGRAVITY_PROMPTS.md
+Learning_Intelligence_Hackathon_Working_Spec.md
+Learning_Intelligence_Platform_Master_Spec.md
