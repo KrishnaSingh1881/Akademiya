@@ -12,13 +12,19 @@ import {
   Activity,
   Layers,
   Sparkles,
+  Share2,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import StudentAcademicGraph from './StudentAcademicGraph';
 
 export default function ProgressLabApp() {
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<'overview' | 'graph'>('overview');
   const [progressList, setProgressList] = useState<any[]>([]);
   const [activityData, setActivityData] = useState<any>(null);
+  const [gaps, setGaps] = useState<any[]>([]);
+  const [violations, setViolations] = useState<any>(null);
+  const [interventions, setInterventions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -28,10 +34,16 @@ export default function ProgressLabApp() {
     Promise.all([
       axios.get(`/api/progress/${user.id}`).catch(() => ({ data: { progress: [] } })),
       axios.get(`/api/activity/summary/${user.id}`).catch(() => ({ data: { summary: {}, topics: [] } })),
+      axios.get(`/api/gaps/${user.id}`).catch(() => ({ data: { gaps: [] } })),
+      axios.get(`/api/questions/students/${user.id}/integrity-summary`).catch(() => ({ data: { total_violations: 0, by_assessment: [] } })),
+      axios.get(`/api/interventions/student/${user.id}`).catch(() => ({ data: { interventions: [] } })),
     ])
-      .then(([progRes, actRes]) => {
+      .then(([progRes, actRes, gapRes, violRes, ivRes]) => {
         setProgressList(progRes.data.progress || []);
         setActivityData(actRes.data || { summary: {}, topics: [] });
+        setGaps(gapRes.data.gaps || []);
+        setViolations(violRes.data || { total_violations: 0, by_assessment: [] });
+        setInterventions(ivRes.data.interventions || []);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -75,10 +87,45 @@ export default function ProgressLabApp() {
         </div>
       </div>
 
+      {/* Tabs Bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--panel-border)', paddingBottom: 8 }}>
+        <button
+          onClick={() => setActiveTab('overview')}
+          className={activeTab === 'overview' ? 'btn-primary' : 'btn-secondary'}
+          style={{ fontSize: 12, padding: '5px 12px', display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 7 }}
+        >
+          <TrendingUp size={14} />
+          <span>Overview</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('graph')}
+          className={activeTab === 'graph' ? 'btn-primary' : 'btn-secondary'}
+          style={{ fontSize: 12, padding: '5px 12px', display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 7 }}
+        >
+          <Share2 size={14} />
+          <span>Academic Graph</span>
+          {violations?.total_violations > 0 && (
+            <span style={{ background: '#ef4444', color: '#fff', fontSize: 10, fontWeight: 800, padding: '1px 5px', borderRadius: 10 }}>
+              {violations.total_violations} violations
+            </span>
+          )}
+        </button>
+      </div>
+
       {loading ? (
         <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)' }}>
           Loading student activity telemetry &amp; progress records...
         </div>
+      ) : activeTab === 'graph' ? (
+        /* ── ACADEMIC GRAPH VIEW ── */
+        <StudentAcademicGraph
+          studentName={user?.name || ''}
+          gaps={gaps}
+          topics={topics}
+          violations={violations}
+          interventions={interventions}
+          progress={progressList}
+        />
       ) : (
         <>
           {/* ── 1. ACTIVE WEBPAGE TELEMETRY DASHBOARD NUMBERS ── */}

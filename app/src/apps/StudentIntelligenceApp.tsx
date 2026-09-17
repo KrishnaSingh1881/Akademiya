@@ -27,6 +27,8 @@ export default function StudentIntelligenceApp() {
   const [gaps, setGaps] = useState<any[]>([]);
   const [activityData, setActivityData] = useState<any>(null);
   const [violations, setViolations] = useState<any>(null);
+  const [interventions, setInterventions] = useState<any[]>([]);
+  const [progressRecords, setProgressRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -49,11 +51,15 @@ export default function StudentIntelligenceApp() {
       axios.get(`/api/gaps/${selectedStudentId}`).catch(() => ({ data: { gaps: [] } })),
       axios.get(`/api/activity/summary/${selectedStudentId}`).catch(() => ({ data: { summary: {}, topics: [] } })),
       axios.get(`/api/questions/students/${selectedStudentId}/integrity-summary`).catch(() => ({ data: { total_violations: 0, by_assessment: [] } })),
+      axios.get(`/api/interventions/student/${selectedStudentId}`).catch(() => ({ data: { interventions: [] } })),
+      axios.get(`/api/progress/${selectedStudentId}`).catch(() => ({ data: { progress: [] } })),
     ])
-      .then(([gapRes, actRes, violRes]) => {
+      .then(([gapRes, actRes, violRes, ivRes, progRes]) => {
         setGaps(gapRes.data.gaps || []);
         setActivityData(actRes.data || { summary: {}, topics: [] });
         setViolations(violRes.data || { total_violations: 0, by_assessment: [] });
+        setInterventions(ivRes.data.interventions || []);
+        setProgressRecords(progRes.data.progress || []);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -566,6 +572,8 @@ export default function StudentIntelligenceApp() {
           gaps={gaps}
           topics={topics}
           violations={violations}
+          interventions={interventions}
+          progress={progressRecords}
         />
       )}
     </div>

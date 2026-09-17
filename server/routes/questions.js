@@ -111,10 +111,15 @@ router.get('/assessments/:id/integrity-report', requireAuth, async (req, res) =>
 
 
 // Aggregate a single student's integrity violations across every assessment they've
-// taken — used by the teacher-facing Academic Graph to plot proctoring history.
-router.get('/students/:student_id/integrity-summary', requireAuth, requireTeacher, async (req, res) => {
+// taken — used by the Academic Graph (teacher's Student Intelligence view, and the
+// student's own Progress Lab view of their own record).
+router.get('/students/:student_id/integrity-summary', requireAuth, async (req, res) => {
   try {
     const studentId = req.params.student_id;
+    const isSelf = req.user.id === studentId;
+    if (!isSelf && req.user.role !== 'teacher') {
+      return res.status(403).json({ error: 'Forbidden: can only view your own integrity summary' });
+    }
     const result = await query(
       `SELECT ie.assessment_id, a.title as assessment_title, ie.event_type, COUNT(*) as count
        FROM integrity_events ie
