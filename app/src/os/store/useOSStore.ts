@@ -6,6 +6,7 @@ export type AppType =
   | 'diagnostic-lab'
   | 'intervention-center'
   | 'my-learning'
+  | 'learn'
   | 'practice-lab'
   | 'code-lab'
   | 'progress-lab'
@@ -52,6 +53,7 @@ const APP_DEFAULTS: Record<AppType, { size: { width: number; height: number }; p
   'diagnostic-lab':        { size: { width: 1000, height: 680 }, position: { x: 90, y: 55 } },
   'intervention-center':   { size: { width: 1020, height: 690 }, position: { x: 110, y: 65 } },
   'my-learning':           { size: { width: 940,  height: 640 }, position: { x: 95, y: 60 } },
+  'learn':                 { size: { width: 1100, height: 740 }, position: { x: 75, y: 45 } },
   'practice-lab':          { size: { width: 1060, height: 720 }, position: { x: 70, y: 45 } },
   'code-lab':              { size: { width: 1120, height: 740 }, position: { x: 60, y: 40 } },
   'progress-lab':          { size: { width: 960,  height: 650 }, position: { x: 120, y: 70 } },
@@ -64,6 +66,7 @@ const APP_TITLES: Record<AppType, string> = {
   'diagnostic-lab':        'Diagnostic Lab',
   'intervention-center':   'Intervention Center',
   'my-learning':           'My Learning',
+  'learn':                 'Learn — CS Curriculum',
   'practice-lab':          'Practice Lab',
   'code-lab':              'Code Lab',
   'progress-lab':          'Progress Lab',

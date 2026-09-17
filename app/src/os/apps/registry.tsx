@@ -9,6 +9,7 @@ import {
   Code2,
   TrendingUp,
   Settings,
+  BookOpen,
 } from 'lucide-react';
 import type { AppType } from '../store/useOSStore';
 
@@ -63,6 +64,14 @@ export const APP_REGISTRY: AppDefinition[] = [
     category: 'student',
     icon: <LightbulbOn width={26} height={26} strokeWidth={2} className="keyline-theme-icon" />,
     description: 'Unified learning cockpit with active interventions & progress',
+    allowedRoles: ['student', 'teacher'],
+  },
+  {
+    id: 'learn',
+    name: 'Learn',
+    category: 'student',
+    icon: <BookOpen size={24} strokeWidth={1.8} />,
+    description: 'Structured 1st to 3rd year CS curriculum: DSA, DBMS & Networks',
     allowedRoles: ['student', 'teacher'],
   },
   {
