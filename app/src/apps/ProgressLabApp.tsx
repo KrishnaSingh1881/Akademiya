@@ -53,7 +53,7 @@ export default function ProgressLabApp() {
   const topics = activityData?.topics || [];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, height: '100%', overflowY: 'auto', paddingRight: 4 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, width: '100%', paddingBottom: 24 }}>
       {/* Header */}
       <div style={{ borderBottom: '1px solid var(--panel-border)', paddingBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

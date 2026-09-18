@@ -136,7 +136,7 @@ export default function AppWindow({ window: win, children }: AppWindowProps) {
           className={`window-content custom-scrollbar window-content-${win.appType}`}
           style={{
             color: 'var(--text-primary)',
-            ...(win.appType === 'code-lab'
+            ...(win.appType === 'code-lab' || win.appType === 'learn'
               ? { padding: '10px 12px', overflow: 'hidden' }
               : {}),
           }}

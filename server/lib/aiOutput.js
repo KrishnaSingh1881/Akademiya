@@ -45,11 +45,14 @@ export function extractJSON(text) {
     return `"${fixed}"`;
   });
 
+  // Strip single-line comments // that LLMs sometimes insert
+  jsonStr = jsonStr.replace(/(^|[^:\\])\/\/.*$/gm, '$1');
+
   const parsed = JSON.parse(jsonStr);
 
-  // Unwrap if wrapped in an object container
+  // Unwrap if wrapped in an object container (do not unwrap if it is a full coding challenge object)
   if (!isArray && parsed.questions) return parsed.questions;
   if (!isArray && parsed.variants) return parsed.variants;
-  if (!isArray && parsed.test_cases) return parsed.test_cases;
+  if (!isArray && !parsed.title && !parsed.initial_code && parsed.test_cases) return parsed.test_cases;
   return parsed;
 }

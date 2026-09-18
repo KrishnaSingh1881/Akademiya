@@ -203,3 +203,99 @@ export const FALLBACK_PLANS = [
     ]
   }
 ];
+
+export const FALLBACK_CHALLENGES = [
+  {
+    concept: 'Recursion',
+    subconcept: 'Base Case Termination',
+    title: 'Recursive Factorial Safeguard',
+    difficulty: 'easy',
+    description: 'Implement a recursive factorial function that correctly returns 1 for n <= 1 and terminates safely for all non-negative integers.',
+    initial_code: `import sys
+
+def factorial(n):
+    # TODO: Implement base case and recursive step
+    pass
+
+line = sys.stdin.read().strip()
+if line:
+    print(factorial(int(line)))`,
+    expected_behaviour: 'Prints the factorial of n',
+    test_cases: [
+      { input: '0', expected_output: '1', is_hidden: false },
+      { input: '4', expected_output: '24', is_hidden: false },
+      { input: '6', expected_output: '720', is_hidden: true }
+    ],
+    diagnostic_tags: ['recursion', 'base_case']
+  },
+  {
+    concept: 'Data Structures',
+    subconcept: 'Binary Search',
+    title: 'Binary Search Index Finder',
+    difficulty: 'medium',
+    description: 'Given a space-separated sorted list of integers on line 1 and a target value on line 2, output the 0-based index of target, or -1 if not found.',
+    initial_code: `import sys
+
+def binary_search(arr, target):
+    # TODO: Implement binary search to return index of target or -1
+    pass
+
+lines = [l.strip() for l in sys.stdin.read().splitlines() if l.strip()]
+if len(lines) >= 2:
+    arr = list(map(int, lines[0].split()))
+    target = int(lines[1])
+    print(binary_search(arr, target))`,
+    expected_behaviour: 'Prints index of target or -1',
+    test_cases: [
+      { input: '2 5 8 12 16\n12', expected_output: '3', is_hidden: false },
+      { input: '10 20 30 40\n5', expected_output: '-1', is_hidden: false },
+      { input: '1 3 5 7 9\n9', expected_output: '4', is_hidden: true }
+    ],
+    diagnostic_tags: ['binary_search', 'sorted_array']
+  },
+  {
+    concept: 'Arrays',
+    subconcept: 'Arrays, Two Pointers & Sliding Window',
+    title: 'Two Sum Sorted Pair',
+    difficulty: 'medium',
+    description: 'Given a sorted array of integers on line 1 and a target sum on line 2, find the two 0-indexed positions summing to target using two pointers. Print "i j" or "NOT FOUND".',
+    initial_code: `import sys
+
+def two_sum_sorted(arr, target):
+    # TODO: Use two pointers from both ends to find the pair summing to target
+    pass
+
+lines = [l.strip() for l in sys.stdin.read().splitlines() if l.strip()]
+if len(lines) >= 2:
+    arr = list(map(int, lines[0].split()))
+    target = int(lines[1])
+    print(two_sum_sorted(arr, target))`,
+    expected_behaviour: 'Prints index pair "i j" or NOT FOUND',
+    test_cases: [
+      { input: '2 7 11 15\n9', expected_output: '0 1', is_hidden: false },
+      { input: '1 2 3 4 6\n6', expected_output: '1 3', is_hidden: false },
+      { input: '1 2 3\n100', expected_output: 'NOT FOUND', is_hidden: true }
+    ],
+    diagnostic_tags: ['two_pointer', 'arrays']
+  }
+];
+
+export function buildFallbackChallenge(concept, subconcept, difficulty = 'medium') {
+  const match = FALLBACK_CHALLENGES.find(
+    c => c.concept.toLowerCase() === (concept || '').toLowerCase()
+  ) || FALLBACK_CHALLENGES[0];
+
+  return {
+    concept: concept || match.concept,
+    subconcept: subconcept || match.subconcept,
+    difficulty: difficulty || match.difficulty,
+    title: match.title,
+    description: match.description,
+    initial_code: match.initial_code,
+    expected_behaviour: match.expected_behaviour,
+    test_cases: match.test_cases,
+    diagnostic_tags: match.diagnostic_tags,
+    source: 'fallback'
+  };
+}
+
