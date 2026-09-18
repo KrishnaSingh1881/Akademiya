@@ -45,6 +45,9 @@ export function extractJSON(text) {
     return `"${fixed}"`;
   });
 
+  // Strip single-line comments // that LLMs sometimes insert
+  jsonStr = jsonStr.replace(/(^|[^:\\])\/\/.*$/gm, '$1');
+
   const parsed = JSON.parse(jsonStr);
 
   // Unwrap if wrapped in an object container (do not unwrap if it is a full coding challenge object)

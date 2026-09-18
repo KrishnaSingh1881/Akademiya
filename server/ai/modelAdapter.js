@@ -674,12 +674,13 @@ Evaluate the student's explanation against the reference answer based on MEANING
 Determine if the explanation is correct, partially correct, or incorrect.
 Identify which core conceptual points were covered and which critical points were missed.
 
-CRITICAL: Return ONLY a JSON object with this exact structure:
+CRITICAL: Return ONLY valid JSON with this exact structure:
 {
-  "verdict": "correct", // must be "correct", "partial", or "incorrect"
+  "verdict": "correct",
   "covered": ["point 1 explained well", "point 2 demonstrated"],
   "missed": ["missing point 1"]
 }
+The "verdict" property must be exactly "correct", "partial", or "incorrect".
 Never return just a number or score.`;
 
   try {
